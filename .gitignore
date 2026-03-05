@@ -1,0 +1,118 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# ==================== Dependencies ====================
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ==================== Testing ====================
+/coverage
+*.lcov
+*.nyc_output
+.junit.xml
+
+# ==================== Next.js ====================
+/.next/
+/out/
+/export
+
+# ==================== Production Build ====================
+/build
+/dist
+
+# ==================== Environment Variables ====================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# ==================== Vercel ====================
+.vercel
+
+# ==================== TypeScript ====================
+*.tsbuildinfo
+next-env.d.ts
+next-env.d.ts.*
+local-*
+
+# ==================== IDE & Editors ====================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ==================== Logs ====================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dev.log
+server.log
+test.log
+*.log
+logs/
+
+# ==================== AI & Config ====================
+.claude
+.z-ai-config
+prompt
+
+# ==================== Skills Directory ====================
+/skills/
+
+# ==================== Database ====================
+*.db
+*.sqlite
+*.sqlite3
+prisma/migrations/dev_*.db
+
+# ==================== ROM Files (NES Emulator) ====================
+*.nes
+*.rom
+*.unif
+*.unf
+upload/
+uploads/
+roms/
+*.save
+*.sav
+*.state
+
+# ==================== Temporary Files ====================
+*.pem
+*.cert
+*.key
+*.csr
+*.p12
+*.pkcs12
+*.pfx
+tmp/
+temp/
+.tmp/
+.temp/
+
+# ==================== Bun ====================
+bun.lock
+.bun/
+
+# ==================== Prisma ====================
+prisma/generated/
+
+# ==================== Misc ====================
+*.tgz
+*.zip
+*.tar
+*.tar.gz
+.cache/
+.parcel-cache/

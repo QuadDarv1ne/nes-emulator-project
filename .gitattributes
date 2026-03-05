@@ -1,0 +1,39 @@
+# Git Attributes для NES Emulator
+
+# Текстовые файлы
+*.ts text
+*.tsx text
+*.js text
+*.jsx text
+*.css text
+*.scss text
+*.html text
+*.json text
+*.md text
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text
+*.sh text eol=lf
+*.env text
+
+# Бинарные файлы
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# ROM файлы (если коммитятся)
+*.nes binary
+*.rom binary
+*.unif binary
+
+# Заморозка строк для lock файлов
+bun.lock text eol=lf
+package-lock.json text eol=lf
+yarn.lock text eol=lf
