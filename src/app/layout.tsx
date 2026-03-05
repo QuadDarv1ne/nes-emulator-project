@@ -2,36 +2,37 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { I18nProvider } from "@/lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "NES Emulator | Maestro7IT",
+  description: "Веб-эмулятор Nintendo Entertainment System (NES). Обучающий проект школы программирования Maestro7IT.",
+  keywords: ["NES", "Emulator", "Nintendo", "React", "Next.js", "Maestro7IT", "эмулятор", "игры"],
+  authors: [{ name: "Дуплей Максим Игоревич | Школа программирования Maestro7IT" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "NES Emulator | Maestro7IT",
+    description: "Веб-эмулятор NES с современным UI",
+    url: "https://github.com/yourusername/nes-emulator-project",
+    siteName: "NES Emulator",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    title: "NES Emulator | Maestro7IT",
+    description: "Веб-эмулятор NES с современным UI",
   },
 };
 
@@ -41,12 +42,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {children}
-        <Toaster />
+        <I18nProvider>
+          {children}
+          <Toaster />
+        </I18nProvider>
       </body>
     </html>
   );

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📧 Связаться с автором
+    url: mailto:your-email@maestro7it.ru
+    about: Для вопросов по проекту обращайтесь к автору
+  - name: 🌐 Школа программирования Maestro7IT
+    url: https://maestro7it.ru
+    about: Официальный сайт школы

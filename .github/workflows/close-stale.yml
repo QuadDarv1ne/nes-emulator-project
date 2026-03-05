@@ -1,0 +1,34 @@
+# Автоматическое закрытие старых issue
+
+name: Close Stale Issues
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Каждый день в полночь
+
+jobs:
+  close-stale:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🔄 Close stale issues
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: |
+            Этот issue был помечен как устаревший из-за отсутствия активности.
+            Если проблема всё ещё актуальна, пожалуйста, оставьте комментарий.
+            
+            — Команда Maestro7IT
+          stale-pr-message: |
+            Этот PR был помечен как устаревший из-за отсутствия активности.
+            Если изменения всё ещё актуальны, пожалуйста, обновите PR.
+            
+            — Команда Maestro7IT
+          days-before-issue-stale: 30
+          days-before-pr-stale: 14
+          days-before-close: 7
+          stale-issue-label: 'stale'
+          stale-pr-label: 'stale'
+          exempt-issue-labels: 'bug,enhancement,help wanted'
+          exempt-pr-labels: 'bug,enhancement'
