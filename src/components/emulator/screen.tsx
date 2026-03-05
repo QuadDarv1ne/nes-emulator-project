@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { NES } from '@/core'
 import { cn } from '@/lib/utils'
 
@@ -16,13 +16,10 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
   const animationRef = useRef<number>(0)
   const nesRef = useRef<NES | null>(null)
   const imageDataRef = useRef<ImageData | null>(null)
-  const [isReady, setIsReady] = useState(false)
+  const isReady = !!nes
 
   useEffect(() => {
     nesRef.current = nes
-    if (nes) {
-      setIsReady(true)
-    }
   }, [nes])
 
   const render = useCallback(() => {
