@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { NES, EmulatorState } from '@/core'
 import { EmulatorScreen } from './screen'
 import { EmulatorControls } from './controls'
@@ -14,19 +14,35 @@ export function Emulator() {
   const [romName, setRomName] = useState<string>('')
   const [state, setState] = useState<EmulatorState | null>(null)
   const nesRef = useRef<NES | null>(null)
+  const intervalRef = useRef<number | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+      if (nesRef.current) {
+        nesRef.current.stop()
+      }
+    }
+  }, [])
 
   const handleROMLoaded = useCallback((loadedNes: NES, name: string) => {
+    // Cleanup previous interval if exists
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+    }
+
     nesRef.current = loadedNes
     setNes(loadedNes)
     setRomName(name)
     loadedNes.start()
-    
+
     // Update state periodically
-    const interval = setInterval(() => {
+    intervalRef.current = window.setInterval(() => {
       setState(loadedNes.getState())
     }, 1000)
-
-    return () => clearInterval(interval)
   }, [])
 
   const handlePause = useCallback(() => {

@@ -19,14 +19,20 @@ export function RomLoader({ onROMLoaded }: RomLoaderProps) {
     setError(null)
 
     try {
+      console.log('Loading ROM:', file.name, file.size, 'bytes')
       const arrayBuffer = await file.arrayBuffer()
       const romData = new Uint8Array(arrayBuffer)
-      
+      console.log('ROM data loaded:', romData.length, 'bytes')
+
       const nes = new NES()
-      const rom = nes.loadROM(romData)
+      console.log('NES instance created')
       
+      const rom = nes.loadROM(romData)
+      console.log('ROM loaded:', rom.title, 'Mapper:', rom.mapperId)
+
       onROMLoaded(nes, rom.title)
     } catch (err) {
+      console.error('ROM load error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load ROM')
     } finally {
       setLoading(false)
