@@ -272,6 +272,14 @@ describe('CPU 6502', () => {
       cpu.write(0x0042, 0x55)
       expect(cpu.read(0x0042)).toBe(0x55)
     })
+
+    it('should mirror RAM in 0x0000-0x1FFF (every 2KB)', () => {
+      cpu.write(0x0100, 0x55)
+      expect(cpu.read(0x0100)).toBe(0x55)
+      expect(cpu.read(0x0900)).toBe(0x55) // Mirror at 0x0800-0x0FFF
+      expect(cpu.read(0x1100)).toBe(0x55) // Mirror at 0x1000-0x17FF
+      expect(cpu.read(0x1900)).toBe(0x55) // Mirror at 0x1800-0x1FFF
+    })
   })
 
   describe('State save/load', () => {

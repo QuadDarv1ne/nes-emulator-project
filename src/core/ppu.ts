@@ -1,9 +1,17 @@
 /**
  * NES PPU (Picture Processing Unit)
- * 
+ *
  * Разрешение: 256x240
  * Спрайты: 64, размер 8x8 или 8x16
  * Палитра: 64 цвета
+ *
+ * Memory map:
+ * - 0x0000-0x0FFF: Pattern table 0
+ * - 0x1000-0x1FFF: Pattern table 1
+ * - 0x2000-0x23FF: Name tables (4x960 bytes)
+ * - 0x23C0-0x23FF: Attribute tables
+ * - 0x3F00-0x3F1F: Palette RAM
+ * - 0x3F20-0x3FFF: Palette mirrors
  */
 
 export class PPU {
@@ -95,30 +103,49 @@ export class PPU {
   }
 
   writeData(value: number) {
-    if (this.address < 0x2000) {
-      this.vram[this.address] = value
-    } else if (this.address >= 0x3F00 && this.address < 0x4000) {
-      const paletteAddr = this.address & 0x1F
-      this.palette[paletteAddr] = value & 0x3F
+    const addr = this.address & 0x3FFF
+    if (addr < 0x2000) {
+      // Pattern table
+      this.vram[addr & 0x0FFF] = value
+    } else if (addr >= 0x2000 && addr < 0x3F00) {
+      // Name tables (with mirroring)
+      this.vram[0x1000 + (addr & 0x0FFF)] = value
+    } else if (addr >= 0x3F00 && addr < 0x4000) {
+      // Palette RAM (with mirrors)
+      const paletteAddr = addr & 0x1F
+      // Mirror 0x3F10, 0x3F14, 0x3F18, 0x3F1C to background
+      if (paletteAddr === 0x10 || paletteAddr === 0x14 || paletteAddr === 0x18 || paletteAddr === 0x1C) {
+        this.palette[paletteAddr & 0x0F] = value & 0x3F
+      } else {
+        this.palette[paletteAddr] = value & 0x3F
+      }
     }
     this.address = (this.address + 1) & 0x3FFF
   }
 
   readData(): number {
+    const addr = this.address & 0x3FFF
     let value: number
-    if (this.address < 0x2000) {
-      value = this.vram[this.address]
-    } else if (this.address >= 0x3F00 && this.address < 0x4000) {
-      const paletteAddr = this.address & 0x1F
-      value = this.palette[paletteAddr]
+    
+    if (addr < 0x2000) {
+      value = this.vram[addr & 0x0FFF]
+    } else if (addr >= 0x2000 && addr < 0x3F00) {
+      value = this.vram[0x1000 + (addr & 0x0FFF)]
+    } else if (addr >= 0x3F00 && addr < 0x4000) {
+      const paletteAddr = addr & 0x1F
+      if (paletteAddr === 0x10 || paletteAddr === 0x14 || paletteAddr === 0x18 || paletteAddr === 0x1C) {
+        value = this.palette[paletteAddr & 0x0F]
+      } else {
+        value = this.palette[paletteAddr]
+      }
     } else {
       value = 0
     }
-    
+
     const result = this.dataBuffer
     this.dataBuffer = value
     this.address = (this.address + 1) & 0x3FFF
-    
+
     return result
   }
 
