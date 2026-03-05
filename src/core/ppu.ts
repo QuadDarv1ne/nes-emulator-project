@@ -1,0 +1,343 @@
+/**
+ * NES PPU (Picture Processing Unit)
+ * 
+ * Разрешение: 256x240
+ * Спрайты: 64, размер 8x8 или 8x16
+ * Палитра: 64 цвета
+ */
+
+export class PPU {
+  // Registers
+  private ctrl: number = 0
+  private mask: number = 0
+  private status: number = 0
+  private scrollX: number = 0
+  private scrollY: number = 0
+  private address: number = 0
+  private dataBuffer: number = 0
+
+  // Memory
+  private vram: Uint8Array // 2KB
+  private palette: Uint8Array // 32 bytes
+  private spriteMemory: Uint8Array // 256 bytes (64 sprites * 4 bytes)
+
+  // Rendering state
+  private scanline: number = 0
+  private cycle: number = 0
+  private frameComplete: boolean = false
+  private nmiOccurred: boolean = false
+  private nmiOutput: boolean = false
+
+  // Screen buffer (256x240 RGBA)
+  private screenBuffer: Uint32Array
+
+  // NES palette (RGB)
+  private static readonly PALETTE = [
+    0x525252, 0x1d0d00, 0x001200, 0x00100b,
+    0x000016, 0x060020, 0x000000, 0x000000,
+    0x676767, 0x331a00, 0x0d2b00, 0x062b17,
+    0x001f39, 0x0f0044, 0x000000, 0x000000,
+    0xadadad, 0x583300, 0x225100, 0x125934,
+    0x003d67, 0x241f6b, 0x161616, 0x000000,
+    0xadadad, 0x75480f, 0x3d7518, 0x2b7556,
+    0x186796, 0x403d9e, 0x4d4d4d, 0x000000,
+    0xadadad, 0x8c6329, 0x5c9633, 0x4d9e75,
+    0x408cb6, 0x665cc7, 0x828282, 0x000000,
+    0xadadad, 0xa07948, 0x85b64d, 0x75b69e,
+    0x6ba7d6, 0x8c7dd6, 0xadadad, 0x242424,
+    0xadadad, 0xb0906b, 0xa7d66b, 0x9ed6b6,
+    0x96c7eb, 0xb09ceb, 0xd6d6d6, 0x424242,
+    0xadadad, 0xc7a78c, 0xc7eb8c, 0xc7ebc7,
+    0xc7e7f7, 0xd6c7f7, 0xf7f7f7, 0x6b6b6b,
+  ]
+
+  constructor() {
+    this.vram = new Uint8Array(0x0800) // 2KB
+    this.palette = new Uint8Array(0x20) // 32 bytes
+    this.spriteMemory = new Uint8Array(0x100) // 256 bytes
+    this.screenBuffer = new Uint32Array(256 * 240)
+  }
+
+  // Register access
+  writeCtrl(value: number) {
+    this.ctrl = value
+    this.nmiOutput = (value & 0x80) !== 0
+  }
+
+  writeMask(value: number) {
+    this.mask = value
+  }
+
+  readStatus(): number {
+    const result = this.status
+    this.nmiOccurred = false
+    this.status &= ~0x80 // Clear VBlank flag
+    return result
+  }
+
+  writeScroll(value: number) {
+    // First write is X, second is Y
+    if (this.address === 0) {
+      this.scrollX = value
+    } else {
+      this.scrollY = value
+    }
+    this.address = (this.address + 1) & 1
+  }
+
+  writeAddress(value: number) {
+    if (this.address === 0) {
+      this.address = ((this.address & 0xFF) | (value << 8)) & 0x3FFF
+    } else {
+      this.address = ((this.address & 0xFF00) | value) & 0x3FFF
+    }
+    this.address = (this.address + 1) & 0x3FFF
+  }
+
+  writeData(value: number) {
+    if (this.address < 0x2000) {
+      this.vram[this.address] = value
+    } else if (this.address >= 0x3F00 && this.address < 0x4000) {
+      const paletteAddr = this.address & 0x1F
+      this.palette[paletteAddr] = value & 0x3F
+    }
+    this.address = (this.address + 1) & 0x3FFF
+  }
+
+  readData(): number {
+    let value: number
+    if (this.address < 0x2000) {
+      value = this.vram[this.address]
+    } else if (this.address >= 0x3F00 && this.address < 0x4000) {
+      const paletteAddr = this.address & 0x1F
+      value = this.palette[paletteAddr]
+    } else {
+      value = 0
+    }
+    
+    const result = this.dataBuffer
+    this.dataBuffer = value
+    this.address = (this.address + 1) & 0x3FFF
+    
+    return result
+  }
+
+  writeOAMAddr(value: number) {
+    this.address = value
+  }
+
+  writeOAMData(value: number) {
+    this.spriteMemory[this.address] = value
+    this.address = (this.address + 1) & 0xFF
+  }
+
+  readOAMData(): number {
+    return this.spriteMemory[this.address]
+  }
+
+  // Sprite DMA
+  writeOAMDMA(value: number) {
+    // DMA from CPU memory (handled by CPU)
+  }
+
+  // PPU step (called every CPU cycle)
+  step(): boolean {
+    this.cycle++
+    
+    // 341 cycles per scanline
+    if (this.cycle >= 341) {
+      this.cycle = 0
+      this.scanline++
+      
+      // 262 scanlines per frame
+      if (this.scanline >= 262) {
+        this.scanline = 0
+        this.frameComplete = true
+        return true // Frame complete
+      }
+      
+      // VBlank starts at scanline 241
+      if (this.scanline === 241) {
+        this.status |= 0x80 // Set VBlank flag
+        this.nmiOccurred = true
+        if (this.nmiOutput) {
+          // Trigger NMI (handled by CPU)
+        }
+      }
+    }
+    
+    return false
+  }
+
+  // Render current scanline
+  renderScanline() {
+    if (this.scanline >= 0 && this.scanline < 240) {
+      // Render visible scanline
+      const y = this.scanline
+      const baseAddr = y * 256
+      
+      // Clear line
+      for (let x = 0; x < 256; x++) {
+        this.screenBuffer[baseAddr + x] = 0xFF000000 // Black
+      }
+      
+      // Render background
+      if (this.mask & 0x08) { // Background enabled
+        this.renderBackground(baseAddr, y)
+      }
+      
+      // Render sprites
+      if (this.mask & 0x10) { // Sprites enabled
+        this.renderSprites(baseAddr, y)
+      }
+    }
+  }
+
+  private renderBackground(baseAddr: number, scanline: number) {
+    const nameTableAddr = 0x2000
+    const patternTableAddr = (this.ctrl & 0x10) ? 0x1000 : 0x0000
+    
+    for (let x = 0; x < 256; x += 8) {
+      const tileX = x >> 3
+      const tileY = scanline >> 3
+      const nameTableIndex = tileY * 32 + tileX
+      const tileIndex = this.vram[nameTableIndex & 0x03FF]
+      
+      const patternAddr = patternTableAddr + (tileIndex * 16) + (scanline & 7)
+      const lowByte = this.vram[patternAddr & 0x0FFF]
+      const highByte = this.vram[(patternAddr + 8) & 0x0FFF]
+      
+      for (let bit = 7; bit >= 0; bit--) {
+        const pixelX = x + (7 - bit)
+        if (pixelX >= 256) continue
+        
+        const low = (lowByte >> bit) & 1
+        const high = (highByte >> bit) & 1
+        const colorIndex = (high << 1) | low
+        
+        if (colorIndex !== 0) {
+          const color = this.getPaletteColor(colorIndex)
+          this.screenBuffer[baseAddr + pixelX] = color
+        }
+      }
+    }
+  }
+
+  private renderSprites(baseAddr: number, scanline: number) {
+    const spriteHeight = (this.ctrl & 0x20) ? 16 : 8
+    const patternTableAddr = (this.ctrl & 0x08) ? 0x1000 : 0x0000
+    
+    // Render sprites in reverse order (priority)
+    for (let i = 63; i >= 0; i--) {
+      const spriteAddr = i * 4
+      const tileY = this.spriteMemory[spriteAddr]
+      const tileIndex = this.spriteMemory[spriteAddr + 1]
+      const attrs = this.spriteMemory[spriteAddr + 2]
+      const tileX = this.spriteMemory[spriteAddr + 3]
+      
+      // Check if sprite is on this scanline
+      if (scanline < tileY || scanline >= tileY + spriteHeight) continue
+      
+      const flipH = (attrs & 0x40) !== 0
+      const flipV = (attrs & 0x80) !== 0
+      const paletteOffset = (attrs & 0x03) * 4
+      
+      let row = scanline - tileY
+      if (flipV) {
+        row = spriteHeight - 1 - row
+      }
+      
+      const patternAddr = patternTableAddr + (tileIndex * 16) + row
+      const lowByte = this.vram[patternAddr & 0x0FFF]
+      const highByte = this.vram[(patternAddr + 8) & 0x0FFF]
+      
+      for (let bit = 7; bit >= 0; bit--) {
+        const pixelX = flipH ? (tileX + (7 - bit)) : (tileX + bit)
+        if (pixelX >= 256) continue
+        
+        const low = (lowByte >> bit) & 1
+        const high = (highByte >> bit) & 1
+        const colorIndex = (high << 1) | low
+        
+        if (colorIndex !== 0) {
+          const color = this.getSpritePaletteColor(colorIndex + paletteOffset)
+          this.screenBuffer[baseAddr + pixelX] = color
+        }
+      }
+    }
+  }
+
+  private getPaletteColor(index: number): number {
+    const paletteIndex = this.palette[index & 0x1F] & 0x3F
+    const rgb = PPU.PALETTE[paletteIndex]
+    return 0xFF000000 | rgb
+  }
+
+  private getSpritePaletteColor(index: number): number {
+    const paletteIndex = this.palette[0x10 + (index & 0x1F)] & 0x3F
+    const rgb = PPU.PALETTE[paletteIndex]
+    return 0xFF000000 | rgb
+  }
+
+  // Get screen buffer
+  getScreenBuffer(): Uint32Array {
+    return this.screenBuffer
+  }
+
+  // Reset
+  reset() {
+    this.ctrl = 0
+    this.mask = 0
+    this.status = 0
+    this.scrollX = 0
+    this.scrollY = 0
+    this.address = 0
+    this.dataBuffer = 0
+    this.scanline = 0
+    this.cycle = 0
+    this.frameComplete = false
+    this.nmiOccurred = false
+    this.nmiOutput = false
+    this.vram.fill(0)
+    this.palette.fill(0)
+    this.spriteMemory.fill(0)
+    this.screenBuffer.fill(0xFF000000)
+  }
+
+  // State
+  getState() {
+    return {
+      ctrl: this.ctrl,
+      mask: this.mask,
+      status: this.status,
+      scrollX: this.scrollX,
+      scrollY: this.scrollY,
+      address: this.address,
+      dataBuffer: this.dataBuffer,
+      scanline: this.scanline,
+      cycle: this.cycle,
+      frameComplete: this.frameComplete,
+      vram: new Uint8Array(this.vram),
+      palette: new Uint8Array(this.palette),
+      spriteMemory: new Uint8Array(this.spriteMemory),
+      screenBuffer: new Uint32Array(this.screenBuffer),
+    }
+  }
+
+  setState(state: ReturnType<typeof this.getState>) {
+    this.ctrl = state.ctrl
+    this.mask = state.mask
+    this.status = state.status
+    this.scrollX = state.scrollX
+    this.scrollY = state.scrollY
+    this.address = state.address
+    this.dataBuffer = state.dataBuffer
+    this.scanline = state.scanline
+    this.cycle = state.cycle
+    this.frameComplete = state.frameComplete
+    this.vram.set(state.vram)
+    this.palette.set(state.palette)
+    this.spriteMemory.set(state.spriteMemory)
+    this.screenBuffer.set(state.screenBuffer)
+  }
+}
