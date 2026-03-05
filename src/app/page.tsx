@@ -2,6 +2,7 @@
 
 import { useI18n } from '@/lib/i18n'
 import { LocaleSwitcher } from '@/lib/i18n/locale-switcher'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { Emulator } from '@/components/emulator'
 import { Footer } from '@/components/footer'
 import { Gamepad2, Sparkles } from 'lucide-react'
@@ -72,6 +73,7 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
+            <ThemeToggle />
             <LocaleSwitcher />
           </motion.div>
         </div>
