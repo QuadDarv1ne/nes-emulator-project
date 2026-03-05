@@ -70,6 +70,11 @@ export class NES {
       }
     )
 
+    // Setup NMI handler
+    this.ppu.setNMIHandler(() => {
+      this.cpu.triggerNMI()
+    })
+
     // APU handlers
     this.memory.setAPUHandlers(
       (addr) => {
@@ -91,7 +96,7 @@ export class NES {
       (addr) => {
         const rom = this.cartridge.getROM()
         if (!rom) return 0
-        
+
         // PRG ROM mapping
         if (addr >= 0x8000 && addr <= 0xBFFF) {
           return rom.prgROM[addr - 0x8000]
@@ -166,10 +171,12 @@ export class NES {
       for (let i = 0; i < 3; i++) {
         const frameComplete = this.ppu.step()
         if (frameComplete) {
-          this.ppu.renderScanline()
           this.frameCount++
         }
       }
+
+      // Render scanline after PPU step
+      this.ppu.renderScanline()
 
       // Step APU
       this.apu.step()
@@ -217,6 +224,7 @@ export class NES {
       controller1: this.controller1.getState(),
       controller2: this.controller2.getState(),
       frameCount: this.frameCount,
+      paused: this.paused,
     }
   }
 
@@ -229,5 +237,6 @@ export class NES {
     this.controller1.setState(state.controller1)
     this.controller2.setState(state.controller2)
     this.frameCount = state.frameCount
+    this.paused = state.paused
   }
 }

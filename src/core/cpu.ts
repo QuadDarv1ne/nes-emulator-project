@@ -66,6 +66,13 @@ export class CPU {
   private zeroPage: Uint8Array
   private stack: Uint8Array
 
+  // Interrupts
+  private nmiPending = false
+  private irqPending = false
+
+  // Callbacks
+  private onNMI?: () => void
+
   // Flags getters/setters
   get C(): number { return (this.status >> 0) & 1 }
   set C(v: number) { this.status = (this.status & 0xFE) | (v & 1) }
@@ -100,6 +107,18 @@ export class CPU {
     this.instructions = this.createInstructions()
   }
 
+  setNMIHandler(handler: () => void) {
+    this.onNMI = handler
+  }
+
+  triggerNMI() {
+    this.nmiPending = true
+  }
+
+  triggerIRQ() {
+    this.irqPending = true
+  }
+
   reset() {
     this.a = 0
     this.x = 0
@@ -107,6 +126,8 @@ export class CPU {
     this.sp = 0xFD
     this.status = 0x24
     this.pc = this.read16(0xFFFC) // Reset vector
+    this.nmiPending = false
+    this.irqPending = false
   }
 
   // Memory operations with proper mirroring
@@ -1039,9 +1060,23 @@ export class CPU {
   }
 
   step(): number {
+    // Handle NMI (highest priority)
+    if (this.nmiPending) {
+      this.nmiPending = false
+      this.handleNMI()
+      return 7 // NMI takes 7 cycles
+    }
+
+    // Handle IRQ (if interrupts not disabled)
+    if (this.irqPending && !this.I) {
+      this.irqPending = false
+      this.handleIRQ()
+      return 7
+    }
+
     const opcode = this.read(this.pc++)
     const instruction = this.instructions.get(opcode)
-    
+
     if (!instruction) {
       console.error(`Unknown opcode: 0x${opcode.toString(16).toUpperCase()} at PC: 0x${(this.pc - 1).toString(16).toUpperCase()}`)
       return 2
@@ -1049,6 +1084,20 @@ export class CPU {
 
     instruction.execute(this)
     return instruction.cycles
+  }
+
+  private handleNMI() {
+    this.push16(this.pc)
+    this.push(this.status & ~0x10) // Clear B flag
+    this.I = 1 // Disable interrupts
+    this.pc = this.read16(0xFFFA) // NMI vector
+  }
+
+  private handleIRQ() {
+    this.push16(this.pc)
+    this.push(this.status & ~0x10) // Clear B flag
+    this.I = 1 // Disable interrupts
+    this.pc = this.read16(0xFFFE) // IRQ vector
   }
 
   run(cycles: number): number {
@@ -1067,6 +1116,8 @@ export class CPU {
       sp: this.sp,
       pc: this.pc,
       status: this.status,
+      nmiPending: this.nmiPending,
+      irqPending: this.irqPending,
       memory: new Uint8Array(this.memory),
     }
   }
@@ -1078,6 +1129,8 @@ export class CPU {
     this.sp = state.sp
     this.pc = state.pc
     this.status = state.status
+    this.nmiPending = state.nmiPending
+    this.irqPending = state.irqPending
     this.memory.set(state.memory)
   }
 }

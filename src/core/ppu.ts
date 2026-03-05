@@ -35,11 +35,12 @@ export class PPU {
   private frameComplete: boolean = false
   private nmiOccurred: boolean = false
   private nmiOutput: boolean = false
+  private nmiPending: boolean = false
 
   // Screen buffer (256x240 RGBA)
   private screenBuffer: Uint32Array
 
-  // NES palette (RGB)
+  // NES palette (RGB) - улучшенная цветовая палитра
   private static readonly PALETTE = [
     0x525252, 0x1d0d00, 0x001200, 0x00100b,
     0x000016, 0x060020, 0x000000, 0x000000,
@@ -59,11 +60,23 @@ export class PPU {
     0xc7e7f7, 0xd6c7f7, 0xf7f7f7, 0x6b6b6b,
   ]
 
+  // Timing constants
+  private static readonly CYCLES_PER_SCANLINE = 341
+  private static readonly SCANLINES_PER_FRAME = 262
+  private static readonly VBLANK_START_SCANLINE = 241
+
+  // Callback for NMI
+  private onNMI?: () => void
+
   constructor() {
     this.vram = new Uint8Array(0x0800) // 2KB
     this.palette = new Uint8Array(0x20) // 32 bytes
     this.spriteMemory = new Uint8Array(0x100) // 256 bytes
     this.screenBuffer = new Uint32Array(256 * 240)
+  }
+
+  setNMIHandler(handler: () => void) {
+    this.onNMI = handler
   }
 
   // Register access
@@ -78,8 +91,7 @@ export class PPU {
 
   readStatus(): number {
     const result = this.status
-    this.nmiOccurred = false
-    this.status &= ~0x80 // Clear VBlank flag
+    this.clearVBlankFlag()
     return result
   }
 
@@ -170,30 +182,50 @@ export class PPU {
   // PPU step (called every CPU cycle)
   step(): boolean {
     this.cycle++
-    
+
     // 341 cycles per scanline
-    if (this.cycle >= 341) {
+    if (this.cycle >= PPU.CYCLES_PER_SCANLINE) {
       this.cycle = 0
       this.scanline++
-      
+
       // 262 scanlines per frame
-      if (this.scanline >= 262) {
+      if (this.scanline >= PPU.SCANLINES_PER_FRAME) {
         this.scanline = 0
         this.frameComplete = true
+        this.nmiPending = false
         return true // Frame complete
       }
-      
+
       // VBlank starts at scanline 241
-      if (this.scanline === 241) {
+      if (this.scanline === PPU.VBLANK_START_SCANLINE) {
         this.status |= 0x80 // Set VBlank flag
         this.nmiOccurred = true
-        if (this.nmiOutput) {
-          // Trigger NMI (handled by CPU)
+        this.nmiPending = true
+        
+        // Trigger NMI immediately if enabled
+        if (this.nmiOutput && this.onNMI) {
+          this.nmiPending = false
+          this.onNMI()
         }
       }
     }
-    
+
     return false
+  }
+
+  // Trigger pending NMI (called by CPU after instruction)
+  triggerNMI(): boolean {
+    if (this.nmiPending && this.nmiOutput) {
+      this.nmiPending = false
+      return true
+    }
+    return false
+  }
+
+  // Clear VBlank flag (on status read)
+  clearVBlankFlag() {
+    this.status &= ~0x80
+    this.nmiOccurred = false
   }
 
   // Render current scanline
@@ -325,10 +357,11 @@ export class PPU {
     this.frameComplete = false
     this.nmiOccurred = false
     this.nmiOutput = false
+    this.nmiPending = false
     this.vram.fill(0)
     this.palette.fill(0)
     this.spriteMemory.fill(0)
-    this.screenBuffer.fill(0xFF000000)
+    this.screenBuffer.fill(0xFF000000) // Black screen
   }
 
   // State
@@ -344,6 +377,9 @@ export class PPU {
       scanline: this.scanline,
       cycle: this.cycle,
       frameComplete: this.frameComplete,
+      nmiOccurred: this.nmiOccurred,
+      nmiOutput: this.nmiOutput,
+      nmiPending: this.nmiPending,
       vram: new Uint8Array(this.vram),
       palette: new Uint8Array(this.palette),
       spriteMemory: new Uint8Array(this.spriteMemory),
@@ -362,6 +398,9 @@ export class PPU {
     this.scanline = state.scanline
     this.cycle = state.cycle
     this.frameComplete = state.frameComplete
+    this.nmiOccurred = state.nmiOccurred
+    this.nmiOutput = state.nmiOutput
+    this.nmiPending = state.nmiPending
     this.vram.set(state.vram)
     this.palette.set(state.palette)
     this.spriteMemory.set(state.spriteMemory)
