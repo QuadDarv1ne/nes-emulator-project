@@ -1,0 +1,44 @@
+# Автоматическое приветствие новых участников
+
+name: Welcome
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 👋 Welcome new contributors
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            Привет! 👋 
+            
+            Спасибо за ваш интерес к проекту **NES Emulator**! 
+            Автор проекта: Дуплей Максим Игоревич | Школа программирования Maestro7IT
+            
+            Мы рассмотрим ваш issue в ближайшее время.
+            
+            > ⚠️ Проект является личным обучающим проектом Maestro7IT.
+            
+          pr-message: |
+            Привет! 👋 
+            
+            Спасибо за ваш Pull Request в проект **NES Emulator**!
+            
+            Автор проекта: Дуплей Максим Игоревич | Школа программирования Maestro7IT
+            
+            Ваш PR будет проверен в ближайшее время.
+            
+            Пожалуйста, убедитесь, что:
+            - ✅ Код проходит проверку типов (`bun run tsc --noEmit`)
+            - ✅ Линтинг проходит без ошибок (`bun run lint`)
+            - ✅ Сборка работает (`bun run build`)
+            
+            > ⚠️ Проект является личным обучающим проектом Maestro7IT.
