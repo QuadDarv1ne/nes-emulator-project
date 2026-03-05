@@ -1,0 +1,13 @@
+# Cloudflare Pages конфигурация
+# Документация: https://developers.cloudflare.com/pages/configuration/
+
+[build]
+command = "bun run build"
+publish = ".next"
+
+[build.environment]
+NODE_VERSION = "20"
+
+# Переменные окружения (настройте в Cloudflare Dashboard)
+# NEXTAUTH_URL = "https://your-project.pages.dev"
+# DATABASE_URL = "file:./dev.db"
