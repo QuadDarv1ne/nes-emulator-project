@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Moon, Sun, Monitor } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -13,19 +13,16 @@ import {
 
 type Theme = 'light' | 'dark' | 'system'
 
+function getInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'system'
+  const saved = localStorage.getItem('theme') as Theme
+  return saved || 'system'
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system')
-  const [mounted, setMounted] = useState(false)
+  const [theme, setTheme] = useState<Theme>(getInitialTheme)
 
   useEffect(() => {
-    setMounted(true)
-    const saved = localStorage.getItem('theme') as Theme
-    if (saved) setTheme(saved)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
-
     const root = document.documentElement
     const applyTheme = (t: Theme) => {
       root.classList.remove('light', 'dark')
@@ -48,9 +45,7 @@ export function ThemeToggle() {
     }
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme, mounted])
-
-  if (!mounted) return null
+  }, [theme])
 
   const icons = {
     light: <Sun className="h-4 w-4" />,

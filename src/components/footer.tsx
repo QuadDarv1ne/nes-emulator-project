@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Gamepad2, Github, Heart, Code, Coffee, ExternalLink } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -25,13 +25,6 @@ const techStack = [
 
 export function Footer() {
   const [currentYear] = useState(new Date().getFullYear())
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) return null
 
   return (
     <footer className="border-t bg-gradient-to-b from-background to-muted/30 mt-auto">
