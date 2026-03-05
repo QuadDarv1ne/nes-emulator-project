@@ -7,30 +7,45 @@ import { Emulator } from '@/components/emulator'
 import { Footer } from '@/components/footer'
 import { Gamepad2, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 
 export default function Home() {
   const { t } = useI18n()
+  const [particles, setParticles] = useState<Array<{ x: number; y: number; duration: number; delay: number; targetY: number }>>([])
+
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 20 }, (_, i) => ({
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        duration: Math.random() * 3 + 2,
+        delay: Math.random() * 2,
+        targetY: -50 - Math.random() * 100,
+      }))
+    )
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20 flex flex-col">
       {/* Animated background particles */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {[...Array(20)].map((_, i) => (
+        {particles.map((particle, i) => (
           <motion.div
             key={i}
             className="absolute w-1 h-1 bg-primary/20 rounded-full"
-            initial={{ 
-              x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000),
-              y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 1000),
+            style={{
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
             }}
+            initial={{ opacity: 0 }}
             animate={{ 
-              y: [null, Math.random() * -100 - 50],
+              y: [null, particle.targetY],
               opacity: [0, 1, 0],
             }}
             transition={{ 
-              duration: Math.random() * 3 + 2,
+              duration: particle.duration,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: particle.delay,
             }}
           />
         ))}
