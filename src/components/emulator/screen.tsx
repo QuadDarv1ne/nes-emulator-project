@@ -12,36 +12,43 @@ interface EmulatorScreenProps {
 export function EmulatorScreen({ nes, width = 256, height = 240 }: EmulatorScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
+  const nesRef = useRef<NES | null>(null)
+
+  useEffect(() => {
+    nesRef.current = nes
+  }, [nes])
 
   const render = useCallback(() => {
-    if (!nes || !canvasRef.current) return
-
+    const currentNes = nesRef.current
     const canvas = canvasRef.current
+    if (!currentNes || !canvas) return
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const buffer = nes.getScreenBuffer()
+    const buffer = currentNes.getScreenBuffer()
     if (!buffer) return
 
-    // Create ImageData from buffer
     const imageData = ctx.createImageData(256, 240)
     const data = imageData.data
 
     for (let i = 0; i < buffer.length; i++) {
       const pixel = buffer[i]
-      data[i * 4 + 0] = (pixel >> 16) & 0xFF // R
-      data[i * 4 + 1] = (pixel >> 8) & 0xFF  // G
-      data[i * 4 + 2] = pixel & 0xFF          // B
-      data[i * 4 + 3] = (pixel >> 24) & 0xFF  // A
+      data[i * 4 + 0] = (pixel >> 16) & 0xFF
+      data[i * 4 + 1] = (pixel >> 8) & 0xFF
+      data[i * 4 + 2] = pixel & 0xFF
+      data[i * 4 + 3] = (pixel >> 24) & 0xFF
     }
 
     ctx.putImageData(imageData, 0, 0)
-    animationRef.current = requestAnimationFrame(render)
-  }, [nes])
+  }, [])
 
   useEffect(() => {
     if (nes) {
-      animationRef.current = requestAnimationFrame(render)
+      animationRef.current = requestAnimationFrame(function loop() {
+        render()
+        animationRef.current = requestAnimationFrame(loop)
+      })
     }
     return () => {
       if (animationRef.current) {
