@@ -1,6 +1,6 @@
 {
   "name": "nes-emulator-project",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Web-based NES emulator with modern UI built on Next.js 16 and React 19",
   "private": true,
   "author": "Дуплей Максим Игоревич | Школа программирования Maestro7IT",
