@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Gamepad2, Github, Heart, Code, Coffee, ExternalLink } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 const socialLinks = [
   { name: 'GitHub', icon: Github, href: 'https://github.com/QuadDarv1ne/nes-emulator-project', color: 'hover:text-gray-300' },
@@ -185,12 +186,15 @@ export function Footer() {
             <p className="mt-1">Обучающий проект • Все права защищены</p>
           </div>
           
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Лицензия</a>
-            <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-            <a href="#" className="hover:text-foreground transition-colors">Конфиденциальность</a>
-            <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-            <a href="#" className="hover:text-foreground transition-colors">Контакты</a>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <a href="#" className="hover:text-foreground transition-colors">Лицензия</a>
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              <a href="#" className="hover:text-foreground transition-colors">Конфиденциальность</a>
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              <a href="#" className="hover:text-foreground transition-colors">Контакты</a>
+            </div>
           </div>
         </motion.div>
       </div>
