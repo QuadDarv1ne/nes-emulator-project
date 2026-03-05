@@ -1,11 +1,14 @@
 /**
  * NES APU (Audio Processing Unit)
- * 
+ *
  * 5 звуковых каналов:
- * - 2x Pulse wave
+ * - 2x Pulse wave (square wave)
  * - 1x Triangle wave
  * - 1x Noise
  * - 1x DMC (Delta Modulation Channel)
+ *
+ * CPU: 1.789796 MHz
+ * Sample rate: 44100 Hz
  */
 
 export class APU {
@@ -14,20 +17,28 @@ export class APU {
   private pulse1Period: number = 0
   private pulse1Volume: number = 0
   private pulse1Enabled: boolean = false
+  private pulse1DutyCycle: number = 0
+  private pulse1Timer: number = 0
 
   // Pulse channel 2
   private pulse2Duty: number = 0
   private pulse2Period: number = 0
   private pulse2Volume: number = 0
   private pulse2Enabled: boolean = false
+  private pulse2DutyCycle: number = 0
+  private pulse2Timer: number = 0
 
   // Triangle channel
   private trianglePeriod: number = 0
   private triangleEnabled: boolean = false
+  private triangleCounter: number = 0
+  private triangleValue: number = 0
 
   // Noise channel
   private noisePeriod: number = 0
   private noiseEnabled: boolean = false
+  private noiseShiftRegister: number = 1
+  private noiseTimer: number = 0
 
   // DMC channel
   private dmcEnabled: boolean = false
@@ -37,12 +48,26 @@ export class APU {
   private buffer: Float32Array
   private bufferIndex: number = 0
 
-  // Clock
+  // Clock (CPU cycles)
   private clock: number = 0
   private frameMode: number = 0
 
+  // Duty tables
+  private static readonly DUTY_TABLE = [
+    [0, 1, 0, 0, 0, 0, 0, 0], // 12.5%
+    [0, 1, 1, 0, 0, 0, 0, 0], // 25%
+    [0, 1, 1, 1, 1, 0, 0, 0], // 50%
+    [1, 0, 0, 1, 1, 1, 1, 1], // 75% inverted
+  ]
+
+  // Triangle wave table
+  private static readonly TRIANGLE_TABLE = [
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+  ]
+
   constructor() {
-    this.buffer = new Float32Array(this.sampleRate / 60) // 1 frame of audio
+    this.buffer = new Float32Array(this.sampleRate / 60)
   }
 
   // Register writes
@@ -108,50 +133,96 @@ export class APU {
     this.frameMode = (value >> 7) & 0x01
   }
 
-  // Step APU
+  // Step APU (called every CPU cycle)
   step(): void {
     this.clock++
-    
-    // Frame counter (240 Hz or 120 Hz)
-    const framePeriod = this.frameMode ? 1 : 2
-    
-    if (this.clock % framePeriod === 0) {
-      this.clockFrame()
+
+    // Clock pulse channel timers
+    if (this.pulse1Enabled) {
+      this.pulse1Timer++
+      if (this.pulse1Timer >= (this.pulse1Period + 1) * 2) {
+        this.pulse1Timer = 0
+        this.pulse1DutyCycle = (this.pulse1DutyCycle + 1) & 7
+      }
     }
-    
+
+    if (this.pulse2Enabled) {
+      this.pulse2Timer++
+      if (this.pulse2Timer >= (this.pulse2Period + 1) * 2) {
+        this.pulse2Timer = 0
+        this.pulse2DutyCycle = (this.pulse2DutyCycle + 1) & 7
+      }
+    }
+
+    // Clock triangle timer
+    if (this.triangleEnabled && this.trianglePeriod > 0) {
+      this.triangleCounter++
+      if (this.triangleCounter >= this.trianglePeriod + 1) {
+        this.triangleCounter = 0
+        this.triangleValue = (this.triangleValue + 1) & 31
+      }
+    }
+
+    // Clock noise timer
+    if (this.noiseEnabled) {
+      this.noiseTimer++
+      const noisePeriods = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1022, 2048, 4096, 8192, 16384, 32768, 65536]
+      if (this.noiseTimer >= noisePeriods[this.noisePeriod & 0x0F]) {
+        this.noiseTimer = 0
+        // Shift register
+        const b1 = this.noiseShiftRegister & 1
+        const b6 = (this.noiseShiftRegister >> 6) & 1
+        this.noiseShiftRegister >>= 1
+        this.noiseShiftRegister |= (b1 ^ b6) << 14
+      }
+    }
+
     // Generate audio sample
     this.generateSample()
   }
 
   private clockFrame() {
-    // Frame sequencer (not fully implemented)
+    // Frame sequencer - clock envelopes, linear counter, sweep units
   }
 
   private generateSample() {
     let sample = 0.0
-    
-    // Pulse waves
+
+    // Pulse waves (TND mixer approximation)
     if (this.pulse1Enabled) {
-      sample += this.pulse1Volume / 15.0 * 0.5
+      const duty = APU.DUTY_TABLE[this.pulse1Duty][this.pulse1DutyCycle]
+      if (duty) {
+        sample += this.pulse1Volume / 15.0 * 0.4
+      }
     }
+
     if (this.pulse2Enabled) {
-      sample += this.pulse2Volume / 15.0 * 0.5
+      const duty = APU.DUTY_TABLE[this.pulse2Duty][this.pulse2DutyCycle]
+      if (duty) {
+        sample += this.pulse2Volume / 15.0 * 0.4
+      }
     }
-    
+
     // Triangle wave
     if (this.triangleEnabled) {
-      sample += 0.3
+      sample += (APU.TRIANGLE_TABLE[this.triangleValue] / 15.0) * 0.3
     }
-    
+
     // Noise
     if (this.noiseEnabled) {
-      sample += 0.2
+      const noiseBit = this.noiseShiftRegister & 1
+      if (noiseBit) {
+        sample += 0.2
+      }
     }
-    
-    // DMC
+
+    // DMC (simplified)
     if (this.dmcEnabled) {
       sample += 0.1
     }
+
+    // TND mixer (simplified)
+    sample = Math.min(1.0, sample)
     
     // Normalize and add to buffer
     sample = Math.max(-1, Math.min(1, sample))

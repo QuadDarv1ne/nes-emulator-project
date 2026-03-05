@@ -109,13 +109,24 @@ export class CPU {
     this.pc = this.read16(0xFFFC) // Reset vector
   }
 
-  // Memory operations
+  // Memory operations with proper mirroring
   read(addr: number): number {
-    return this.memory[addr & 0xFFFF]
+    addr &= 0xFFFF
+    // RAM mirrors every 2KB
+    if (addr < 0x2000) {
+      return this.memory[addr & 0x07FF]
+    }
+    return this.memory[addr]
   }
 
   write(addr: number, value: number) {
-    this.memory[addr & 0xFFFF] = value & 0xFF
+    addr &= 0xFFFF
+    // RAM mirrors every 2KB
+    if (addr < 0x2000) {
+      this.memory[addr & 0x07FF] = value & 0xFF
+      return
+    }
+    this.memory[addr] = value & 0xFF
   }
 
   read16(addr: number): number {
