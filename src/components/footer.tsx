@@ -38,8 +38,8 @@ export function Footer() {
       {/* Decorative top border */}
       <div className="h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
       
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {/* Brand Section */}
           <motion.div 
             className="space-y-4"
@@ -176,24 +176,24 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <motion.div 
-          className="border-t mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4"
+          className="border-t mt-8 md:mt-12 pt-6 md:pt-8 flex flex-col sm:flex-row justify-between items-center gap-3 md:gap-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <div className="text-xs text-muted-foreground text-center md:text-left">
+          <div className="text-[10px] md:text-xs text-muted-foreground text-center sm:text-left">
             <p>© {currentYear} <span className="text-foreground font-medium">Дуплей Максим Игоревич</span> | Школа программирования Maestro7IT</p>
             <p className="mt-1">Обучающий проект • Все права защищены</p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center">
             <ThemeToggle />
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Лицензия</a>
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <a href="#" className="hover:text-foreground transition-colors">Конфиденциальность</a>
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <a href="#" className="hover:text-foreground transition-colors">Контакты</a>
+            <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
+              <a href="#" className="hover:text-foreground transition-colors whitespace-nowrap">Лицензия</a>
+              <span className="w-1 h-1 rounded-full bg-muted-foreground flex-shrink-0" />
+              <a href="#" className="hover:text-foreground transition-colors whitespace-nowrap">Конфиденциальность</a>
+              <span className="w-1 h-1 rounded-full bg-muted-foreground flex-shrink-0" />
+              <a href="#" className="hover:text-foreground transition-colors whitespace-nowrap">Контакты</a>
             </div>
           </div>
         </motion.div>

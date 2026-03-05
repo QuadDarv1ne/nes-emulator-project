@@ -58,32 +58,33 @@ export default function Home() {
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between">
           <motion.div 
-            className="flex items-center gap-3"
+            className="flex items-center gap-2 md:gap-3"
             whileHover={{ scale: 1.02 }}
           >
             <motion.div
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
             >
-              <Gamepad2 className="h-8 w-8 text-primary" />
+              <Gamepad2 className="h-6 w-6 md:h-8 md:w-8 text-primary" />
             </motion.div>
-            <div>
+            <div className="min-w-0">
               <motion.h1 
-                className="text-xl font-bold flex items-center gap-2"
+                className="text-base md:text-xl font-bold flex items-center gap-1 md:gap-2 truncate"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                {t('emulator.title')}
-                <Sparkles className="h-4 w-4 text-amber-500" />
+                <span className="hidden sm:inline">{t('emulator.title')}</span>
+                <span className="sm:hidden">NES</span>
+                <Sparkles className="h-3 w-3 md:h-4 md:w-4 text-amber-500 flex-shrink-0" />
               </motion.h1>
               <p className="text-xs text-muted-foreground">Maestro7IT</p>
             </div>
           </motion.div>
           <motion.div 
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 md:gap-2"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -95,11 +96,12 @@ export default function Home() {
       </motion.header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 flex-grow">
+      <main className="container mx-auto px-4 py-6 md:py-8 flex-grow">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
+          className="w-full"
         >
           <Emulator />
         </motion.div>

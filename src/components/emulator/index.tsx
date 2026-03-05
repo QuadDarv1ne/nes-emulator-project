@@ -99,7 +99,7 @@ export function Emulator() {
   }, [])
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
+    <div className="w-full max-w-6xl mx-auto space-y-4 md:space-y-6">
       {/* ROM Loader */}
       {!nes && (
         <Card>
@@ -131,6 +131,7 @@ export function Emulator() {
                   size="icon"
                   onClick={handlePause}
                   title={state?.paused ? 'Продолжить' : 'Пауза'}
+                  className="h-10 w-10"
                 >
                   {state?.paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
                 </Button>
@@ -140,6 +141,7 @@ export function Emulator() {
                   size="icon"
                   onClick={handleReset}
                   title="Сброс"
+                  className="h-10 w-10"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
@@ -149,6 +151,7 @@ export function Emulator() {
                   size="icon"
                   onClick={handleSaveState}
                   title="Сохранить состояние"
+                  className="h-10 w-10"
                 >
                   <Download className="h-4 w-4" />
                 </Button>
@@ -158,16 +161,17 @@ export function Emulator() {
                   size="icon"
                   onClick={handleLoadState}
                   title="Загрузить состояние"
+                  className="h-10 w-10"
                 >
                   <Upload className="h-4 w-4" />
                 </Button>
               </div>
 
               {/* Info */}
-              <div className="mt-4 text-center text-sm text-muted-foreground">
-                {romName && <p>ROM: {romName}</p>}
+              <div className="mt-4 text-center text-xs md:text-sm text-muted-foreground">
+                {romName && <p className="font-medium truncate px-2">{romName}</p>}
                 {state && (
-                  <div className="flex gap-4 justify-center mt-2">
+                  <div className="flex gap-3 md:gap-4 justify-center mt-2 flex-wrap">
                     <span>FPS: {state.fps}</span>
                     <span>Frames: {state.frameCount}</span>
                     {state.paused && <span className="text-yellow-500">PAUSED</span>}
@@ -180,26 +184,27 @@ export function Emulator() {
           {/* Controls Help */}
           <Card>
             <CardContent className="pt-6">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Gamepad2 className="h-5 w-5" />
-                Управление
+              <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm md:text-base">
+                <Gamepad2 className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="hidden sm:inline">Управление</span>
+                <span className="sm:hidden">Ctrl</span>
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div className="bg-muted p-3 rounded text-center">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 text-xs md:text-sm">
+                <div className="bg-muted p-2 md:p-3 rounded text-center">
                   <div className="font-medium">↑ ↓ ← →</div>
-                  <div className="text-muted-foreground">D-Pad</div>
+                  <div className="text-muted-foreground text-[10px] md:text-xs">D-Pad</div>
                 </div>
-                <div className="bg-muted p-3 rounded text-center">
+                <div className="bg-muted p-2 md:p-3 rounded text-center">
                   <div className="font-medium">Z / Enter</div>
-                  <div className="text-muted-foreground">Кнопка A</div>
+                  <div className="text-muted-foreground text-[10px] md:text-xs">Кнопка A</div>
                 </div>
-                <div className="bg-muted p-3 rounded text-center">
+                <div className="bg-muted p-2 md:p-3 rounded text-center">
                   <div className="font-medium">X / Space</div>
-                  <div className="text-muted-foreground">Кнопка B</div>
+                  <div className="text-muted-foreground text-[10px] md:text-xs">Кнопка B</div>
                 </div>
-                <div className="bg-muted p-3 rounded text-center">
+                <div className="bg-muted p-2 md:p-3 rounded text-center">
                   <div className="font-medium">A / S</div>
-                  <div className="text-muted-foreground">Select / Start</div>
+                  <div className="text-muted-foreground text-[10px] md:text-xs">Select / Start</div>
                 </div>
               </div>
             </CardContent>
