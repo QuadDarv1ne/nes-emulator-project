@@ -80,12 +80,13 @@ export function ThemeToggle() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {(['light', 'dark', 'system'] as Theme[]).map((t) => (
-          <DropdownMenuItem key={t} onClick={() => setTheme(t)} className="gap-2 cursor-pointer">
+          <DropdownMenuItem 
+            key={t} 
+            onClick={() => setTheme(t)} 
+            className="gap-2 cursor-pointer"
+          >
             {icons[t]}
             <span>{labels[t]}</span>
-            {theme === t && (
-              <span className="ml-auto text-xs text-muted-foreground">✓</span>
-            )}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
