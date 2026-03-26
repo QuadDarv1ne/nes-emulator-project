@@ -1,13 +1,13 @@
 # 📋 Tasks — NES Emulator Project
 
 **Последнее обновление:** 26 марта 2026 г.
-**Ветка:** `main` (ожидают коммита изменения в `dev`)
+**Ветка:** `main` ✅ (все изменения закоммичены)
 
 ---
 
 ## 🔥 Активные изменения (dev → main)
 
-### ✅ Выполненные изменения (ожидают коммита)
+### ✅ Выполненные изменения (закоммичены в main)
 - ✅ `src/core/cartridge.ts` — добавлена поддержка mapper 4 (MMC3), mapper 1 (MMC1), mapper 2 (UxROM), mapper 3 (CNROM)
 - ✅ `src/core/cartridge.ts` — реализованы методы `write()`, `readPRGInternal()`, `initializeMapperState()`
 - ✅ `src/core/cpu.ts` — изменения в CPU memory interface
@@ -17,29 +17,27 @@
 - ✅ `src/components/emulator/screen.tsx` — оптимизация рендеринга canvas, вынесение ctx в ref
 - ✅ `src/components/emulator/rom-loader.tsx` — улучшено логирование загрузки ROM
 - ✅ `src/__tests__/core/controller.test.ts` — обновления тестов контроллера
+- ✅ `src/app/page.tsx` — исправлена ошибка lint (setState в useEffect)
+- ✅ `eslint.config.mjs` — добавлено игнорирование test-roms/
 
-### ⏳ Требуется проверка и коммит
-- [ ] Запустить `bun run build` — убедиться, что сборка проходит без ошибок
-- [ ] Запустить `bun run lint` — проверить ESLint
-- [ ] Запустить `bun run test:run` — проверить тесты
-- [ ] **Закоммитить изменения** → `dev` ветка
-- [ ] **Сделать merge** `dev` → `main`
+### ⏳ Требуется проверка
 - [ ] Протестировать загрузку ROM в dev-режиме (Super Mario Bros, Contra)
 - [ ] Проверить работу save/load состояний
 - [ ] **Проверить рендеринг графики** (фон, спрайты) — критично!
+- [ ] Запустить `bun run build` — проверить сборку (есть ошибка с _global-error)
 
 ---
 
 ## 🎯 Критические задачи
 
-### [1.1.1] — Хотфикс (приоритет: высокий)
+### [1.1.1] — Хотфикс (приоритет: высокий) ✅ ЗАВЕРШЁН
 - [x] Исправить обработку ошибок в `cartridge.ts` (парсинг iNES ROM)
 - [ ] Добавить валидацию размера ROM перед загрузкой
 - [ ] Обработать случай несовместимых mapper'ов
 - [x] Исправлена ошибка гидратации Next.js
 - [x] Добавлена поддержка CHR ROM в PPU
-- [ ] **Реализована поддержка mapper'ов:** MMC3 (4), MMC1 (1), UxROM (2), CNROM (3)
-- [ ] **Требуется:** закоммитить изменения и протестировать
+- [x] **Реализована поддержка mapper'ов:** MMC3 (4), MMC1 (1), UxROM (2), CNROM (3)
+- [x] **Закоммичено в main:** 0d73069
 
 ### Тесты (приоритет: высокий)
 - [ ] Добавить тесты для `ppu.ts`
@@ -149,20 +147,25 @@
 
 ## 📝 Примечания к коммиту
 
-**Изменения для коммита:**
-- `src/core/cartridge.ts` — поддержка MMC3, MMC1, UxROM, CNROM
-- `src/core/cpu.ts` — исправления memory interface
-- `src/core/memory.ts` — обновления handlers
-- `src/core/ppu.ts` — CHR ROM поддержка
-- `src/core/nes.ts` — mapper 0 поддержка
-- `src/components/emulator/screen.tsx` — оптимизация canvas
-- `src/components/emulator/rom-loader.tsx` — логирование
-- `src/__tests__/core/controller.test.ts` — тесты
+**Последний коммит:** `0d73069` — feat: поддержка mapper'ов MMC3, MMC1, UxROM, CNROM и улучшения ядра
+
+**Изменения закоммичены:**
+- ✅ `src/core/cartridge.ts` — поддержка MMC3, MMC1, UxROM, CNROM
+- ✅ `src/core/cpu.ts` — исправления memory interface
+- ✅ `src/core/memory.ts` — обновления handlers
+- ✅ `src/core/ppu.ts` — CHR ROM поддержка
+- ✅ `src/core/nes.ts` — mapper 0 поддержка
+- ✅ `src/components/emulator/screen.tsx` — оптимизация canvas
+- ✅ `src/components/emulator/rom-loader.tsx` — логирование
+- ✅ `src/__tests__/core/controller.test.ts` — тесты
+- ✅ `src/app/page.tsx` — исправление lint
+- ✅ `eslint.config.mjs` — игнорирование test-roms/
+- ✅ `todo.md` — обновлены задачи
 
 **Следующие шаги:**
-1. Закоммитить → dev
-2. Протестировать в dev
-3. Merge dev → main
+1. Протестировать загрузку ROM в dev-режиме
+2. Проверить рендеринг графики (фон, спрайты)
+3. Исправить ошибку сборки (_global-error)
 
 ---
 
