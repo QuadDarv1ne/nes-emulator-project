@@ -17,6 +17,17 @@ export interface EmulatorState {
   frameCount: number
 }
 
+export interface SaveState {
+  cpu: ReturnType<typeof CPU.prototype.getState>
+  ppu: ReturnType<typeof PPU.prototype.getState>
+  apu: ReturnType<typeof APU.prototype.getState>
+  memory: ReturnType<typeof Memory.prototype.getState>
+  controller1: ReturnType<typeof Controller.prototype.getState>
+  controller2: ReturnType<typeof Controller.prototype.getState>
+  frameCount: number
+  paused: boolean
+}
+
 export class NES {
   private cpu: CPU
   private ppu: PPU
@@ -83,10 +94,15 @@ export class NES {
       },
       (addr, value) => {
         // APU register writes
-        if (addr >= 0x00 && addr <= 0x03) {
-          this.apu.writePulseControl(0, value)
-        } else if (addr >= 0x04 && addr <= 0x07) {
-          this.apu.writePulseControl(1, value)
+        switch (addr) {
+          case 0x00: this.apu.writePulseControl(0, value); break
+          case 0x01: this.apu.writePulseControl(1, value); break
+          case 0x02: this.apu.writePulseSweep(0, value); break
+          case 0x03: this.apu.writePulseSweep(1, value); break
+          case 0x08: this.apu.writeTriangleControl(value); break
+          case 0x0C: this.apu.writeNoiseControl(value); break
+          case 0x0F: this.apu.writeDMCControl(value); break
+          case 0x17: this.apu.writeFrameCounter(value); break
         }
       }
     )
@@ -109,6 +125,12 @@ export class NES {
         // Cartridge writes (for mappers)
       }
     )
+
+    // DMA handler - transfer sprite data from CPU memory to PPU
+    this.memory.setDMAHandler((page) => {
+      const cpuMemory = this.cpu.getMemory()
+      this.ppu.writeOAMDMA(page, cpuMemory)
+    })
   }
 
   loadROM(data: Uint8Array): ROM {
@@ -215,7 +237,7 @@ export class NES {
   }
 
   // Save state
-  saveState(): object {
+  saveState(): SaveState {
     return {
       cpu: this.cpu.getState(),
       ppu: this.ppu.getState(),
@@ -229,7 +251,7 @@ export class NES {
   }
 
   // Load state
-  loadState(state: ReturnType<typeof this.saveState>) {
+  loadState(state: SaveState) {
     this.cpu.setState(state.cpu)
     this.ppu.setState(state.ppu)
     this.apu.setState(state.apu)

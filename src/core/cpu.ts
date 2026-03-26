@@ -70,8 +70,12 @@ export class CPU {
   private nmiPending = false
   private irqPending = false
 
+  // Cycle tracking
+  private extraCycles = 0
+
   // Callbacks
   private onNMI?: () => void
+  private onDMA?: (page: number) => void
 
   // Flags getters/setters
   get C(): number { return (this.status >> 0) & 1 }
@@ -111,8 +115,20 @@ export class CPU {
     this.onNMI = handler
   }
 
+  setDMAHandler(handler: (page: number) => void) {
+    this.onDMA = handler
+  }
+
   triggerNMI() {
     this.nmiPending = true
+  }
+
+  // Sprite DMA - transfer 256 bytes from CPU memory to PPU OAM
+  // Takes 513 CPU cycles (256 bytes * 2 cycles per byte + 1 cycle overhead)
+  writeOAMDMA(page: number) {
+    if (this.onDMA) {
+      this.onDMA(page)
+    }
   }
 
   triggerIRQ() {
@@ -928,6 +944,15 @@ export class CPU {
       cpu.pc = cpu.pop16()
     }})
 
+    // BRK - Break (Software Interrupt)
+    instructions.set(0x00, { opcode: 0x00, mnemonic: 'BRK', mode: 'implicit', cycles: 7, execute: (cpu) => {
+      cpu.pc++ // Skip the BRK byte
+      cpu.push16(cpu.pc)
+      cpu.push(cpu.status | 0x30) // Set B and U flags
+      cpu.I = 1 // Disable interrupts
+      cpu.pc = cpu.read16(0xFFFE) // IRQ/BRK vector (shared with IRQ)
+    }})
+
     // PHA - Push Accumulator
     instructions.set(0x48, { opcode: 0x48, mnemonic: 'PHA', mode: 'implicit', cycles: 3, execute: (cpu) => {
       cpu.push(cpu.a)
@@ -965,28 +990,36 @@ export class CPU {
 
     // Branch instructions
     instructions.set(0x10, { opcode: 0x10, mnemonic: 'BPL', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.N === 0) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.N === 0) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
     instructions.set(0x30, { opcode: 0x30, mnemonic: 'BMI', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.N === 1) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.N === 1) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
     instructions.set(0x50, { opcode: 0x50, mnemonic: 'BVC', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.V === 0) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.V === 0) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
     instructions.set(0x70, { opcode: 0x70, mnemonic: 'BVS', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.V === 1) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.V === 1) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
     instructions.set(0x90, { opcode: 0x90, mnemonic: 'BCC', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.C === 0) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.C === 0) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
     instructions.set(0xB0, { opcode: 0xB0, mnemonic: 'BCS', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.C === 1) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.C === 1) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
     instructions.set(0xD0, { opcode: 0xD0, mnemonic: 'BNE', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.Z === 0) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.Z === 0) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
     instructions.set(0xF0, { opcode: 0xF0, mnemonic: 'BEQ', mode: 'relative', cycles: 2, execute: (cpu) => {
-      if (cpu.Z === 1) cpu.branch(cpu.getRelative())
+      const offset = cpu.getRelative()
+      if (cpu.Z === 1) { const penalty = cpu.branch(offset); cpu.addCycles(penalty) }
     }})
 
     // CLC - Clear Carry
@@ -1032,9 +1065,15 @@ export class CPU {
     return instructions
   }
 
-  private branch(offset: number) {
-    this.pc += offset
-    // TODO: Add cycle penalty for page crossing
+  addCycles(cycles: number) {
+    this.extraCycles += cycles
+  }
+
+  private branch(offset: number): number {
+    const oldPC = this.pc
+    this.pc = (this.pc + offset) & 0xFFFF
+    // Page crossing adds 1 extra cycle
+    return (oldPC & 0xFF00) !== (this.pc & 0xFF00) ? 1 : 0
   }
 
   private adc(value: number) {
@@ -1060,6 +1099,9 @@ export class CPU {
   }
 
   step(): number {
+    // Reset extra cycles
+    this.extraCycles = 0
+
     // Handle NMI (highest priority)
     if (this.nmiPending) {
       this.nmiPending = false
@@ -1083,7 +1125,7 @@ export class CPU {
     }
 
     instruction.execute(this)
-    return instruction.cycles
+    return instruction.cycles + this.extraCycles
   }
 
   private handleNMI() {
@@ -1106,6 +1148,10 @@ export class CPU {
       executedCycles += this.step()
     }
     return executedCycles
+  }
+
+  getMemory(): Uint8Array {
+    return this.memory
   }
 
   getState() {
