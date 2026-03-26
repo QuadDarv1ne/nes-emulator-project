@@ -14,10 +14,117 @@ export function Emulator() {
   const [nes, setNes] = useState<NES | null>(null)
   const [romName, setRomName] = useState<string>('')
   const [state, setState] = useState<EmulatorState | null>(null)
+  const [gamepadConnected, setGamepadConnected] = useState(false)
   const nesRef = useRef<NES | null>(null)
   const intervalRef = useRef<number | null>(null)
   const autoSaveIntervalRef = useRef<number | null>(null)
+  const gamepadRef = useRef<number | null>(null)
   const STORAGE_KEY = 'nes-emulator-save-state'
+
+  // Gamepad button mapping (Xbox controller layout)
+  const GAMEPAD_BUTTONS = {
+    A: 0,       // A button
+    B: 1,       // B button
+    SELECT: 8,  // Select/Back
+    START: 9,   // Start
+    UP: 12,     // D-pad up
+    DOWN: 13,   // D-pad down
+    LEFT: 14,   // D-pad left
+    RIGHT: 15,  // D-pad right
+  }
+
+  // Handle gamepad connection
+  useEffect(() => {
+    const handleGamepadConnected = (e: GamepadEvent) => {
+      gamepadRef.current = e.gamepad.index
+      setGamepadConnected(true)
+      toast.success(`Геймпад подключен: ${e.gamepad.id}`)
+    }
+
+    const handleGamepadDisconnected = (e: GamepadEvent) => {
+      if (gamepadRef.current === e.gamepad.index) {
+        gamepadRef.current = null
+        setGamepadConnected(false)
+        toast.info('Геймпад отключен')
+      }
+    }
+
+    window.addEventListener('gamepadconnected', handleGamepadConnected)
+    window.addEventListener('gamepaddisconnected', handleGamepadDisconnected)
+
+    return () => {
+      window.removeEventListener('gamepadconnected', handleGamepadConnected)
+      window.removeEventListener('gamepaddisconnected', handleGamepadDisconnected)
+    }
+  }, [])
+
+  // Poll gamepad input
+  useEffect(() => {
+    if (!nesRef.current || gamepadRef.current === null) return
+
+    const pollGamepad = () => {
+      const gamepads = navigator.getGamepads()
+      const gamepad = gamepads[gamepadRef.current!]
+
+      if (!gamepad) return
+
+      // Map gamepad buttons to NES controller
+      const buttons = gamepad.buttons
+
+      // Player 1 controls
+      if (buttons[GAMEPAD_BUTTONS.A].pressed) {
+        nesRef.current!.pressButton(0, 0) // A button
+      } else {
+        nesRef.current!.releaseButton(0, 0)
+      }
+
+      if (buttons[GAMEPAD_BUTTONS.B].pressed) {
+        nesRef.current!.pressButton(1, 0) // B button
+      } else {
+        nesRef.current!.releaseButton(1, 0)
+      }
+
+      if (buttons[GAMEPAD_BUTTONS.SELECT].pressed) {
+        nesRef.current!.pressButton(2, 0) // Select
+      } else {
+        nesRef.current!.releaseButton(2, 0)
+      }
+
+      if (buttons[GAMEPAD_BUTTONS.START].pressed) {
+        nesRef.current!.pressButton(3, 0) // Start
+      } else {
+        nesRef.current!.releaseButton(3, 0)
+      }
+
+      if (buttons[GAMEPAD_BUTTONS.UP].pressed) {
+        nesRef.current!.pressButton(4, 0) // Up
+      } else {
+        nesRef.current!.releaseButton(4, 0)
+      }
+
+      if (buttons[GAMEPAD_BUTTONS.DOWN].pressed) {
+        nesRef.current!.pressButton(5, 0) // Down
+      } else {
+        nesRef.current!.releaseButton(5, 0)
+      }
+
+      if (buttons[GAMEPAD_BUTTONS.LEFT].pressed) {
+        nesRef.current!.pressButton(6, 0) // Left
+      } else {
+        nesRef.current!.releaseButton(6, 0)
+      }
+
+      if (buttons[GAMEPAD_BUTTONS.RIGHT].pressed) {
+        nesRef.current!.pressButton(7, 0) // Right
+      } else {
+        nesRef.current!.releaseButton(7, 0)
+      }
+
+      requestAnimationFrame(pollGamepad)
+    }
+
+    pollGamepad()
+  }, [nes])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -297,6 +404,9 @@ export function Emulator() {
                     {localStorage.getItem('nes-emulator-save-state') && (
                       <span className="text-green-500" title="Есть автосохранение">💾</span>
                     )}
+                    {gamepadConnected && (
+                      <span className="text-blue-500" title="Геймпад подключен">🎮</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -310,6 +420,9 @@ export function Emulator() {
                 <Gamepad2 className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="hidden sm:inline">Управление</span>
                 <span className="sm:hidden">Ctrl</span>
+                {gamepadConnected && (
+                  <span className="text-xs font-normal text-green-500 ml-2">(Геймпад подключен)</span>
+                )}
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 text-xs md:text-sm">
                 <div className="bg-muted p-2 md:p-3 rounded text-center">
@@ -329,6 +442,11 @@ export function Emulator() {
                   <div className="text-muted-foreground text-[10px] md:text-xs">Select / Start</div>
                 </div>
               </div>
+              {gamepadConnected && (
+                <div className="mt-4 text-xs text-muted-foreground text-center">
+                  <p>🎮 Геймпад активен! Используйте кнопки A/B и D-pad для управления.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </>
