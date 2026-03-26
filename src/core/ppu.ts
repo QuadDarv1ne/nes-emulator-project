@@ -29,6 +29,9 @@ export class PPU {
   private palette: Uint8Array // 32 bytes
   private spriteMemory: Uint8Array // 256 bytes (64 sprites * 4 bytes)
 
+  // CHR ROM from cartridge
+  private chrROM: Uint8Array = new Uint8Array(0)
+
   // Rendering state
   private scanline: number = 0
   private cycle: number = 0
@@ -77,6 +80,10 @@ export class PPU {
 
   setNMIHandler(handler: () => void) {
     this.onNMI = handler
+  }
+
+  setCHRROM(chrROM: Uint8Array) {
+    this.chrROM = chrROM
   }
 
   // Register access
@@ -238,17 +245,18 @@ export class PPU {
       // Render visible scanline
       const y = this.scanline
       const baseAddr = y * 256
-      
-      // Clear line
+
+      // Clear line with background color from palette
+      const bgColor = this.getPaletteColor(0)
       for (let x = 0; x < 256; x++) {
-        this.screenBuffer[baseAddr + x] = 0xFF000000 // Black
+        this.screenBuffer[baseAddr + x] = bgColor
       }
-      
+
       // Render background
       if (this.mask & 0x08) { // Background enabled
         this.renderBackground(baseAddr, y)
       }
-      
+
       // Render sprites
       if (this.mask & 0x10) { // Sprites enabled
         this.renderSprites(baseAddr, y)
@@ -257,6 +265,8 @@ export class PPU {
   }
 
   private renderBackground(baseAddr: number, scanline: number) {
+    // Pattern table from CHR ROM, or VRAM if no CHR ROM
+    const patternTable = this.chrROM.length > 0 ? this.chrROM : this.vram
     const patternTableAddr = (this.ctrl & 0x10) ? 0x1000 : 0x0000
     const fineX = (this.scrollX & 0x07)
 
@@ -267,8 +277,8 @@ export class PPU {
       const tileIndex = this.vram[nameTableIndex & 0x03FF]
 
       const patternAddr = patternTableAddr + (tileIndex * 16) + (scanline & 7)
-      const lowByte = this.vram[patternAddr & 0x0FFF]
-      const highByte = this.vram[(patternAddr + 8) & 0x0FFF]
+      const lowByte = patternTable[patternAddr & 0x1FFF]
+      const highByte = patternTable[(patternAddr + 8) & 0x1FFF]
 
       for (let bit = 7; bit >= 0; bit--) {
         const pixelX = (tileRow * 8) + (7 - bit) - fineX
@@ -287,6 +297,8 @@ export class PPU {
   }
 
   private renderSprites(baseAddr: number, scanline: number) {
+    // Pattern table from CHR ROM, or VRAM if no CHR ROM
+    const patternTable = this.chrROM.length > 0 ? this.chrROM : this.vram
     const spriteHeight = (this.ctrl & 0x20) ? 16 : 8
     const patternTableAddr = (this.ctrl & 0x08) ? 0x1000 : 0x0000
 
@@ -315,8 +327,8 @@ export class PPU {
       }
 
       const patternAddr = patternTableAddr + (tileIndex * 16) + row
-      const lowByte = this.vram[patternAddr & 0x0FFF]
-      const highByte = this.vram[(patternAddr + 8) & 0x0FFF]
+      const lowByte = patternTable[patternAddr & 0x1FFF]
+      const highByte = patternTable[(patternAddr + 8) & 0x1FFF]
 
       for (let bit = 7; bit >= 0; bit--) {
         const pixelX = flipH ? (tileX + (7 - bit)) : (tileX + bit)
@@ -381,9 +393,12 @@ export class PPU {
     this.nmiOutput = false
     this.nmiPending = false
     this.vram.fill(0)
-    this.palette.fill(0)
+    // Инициализируем палитру значениями по умолчанию (серый фон)
+    this.palette.fill(0x0F) // Светло-серый цвет
     this.spriteMemory.fill(0)
-    this.screenBuffer.fill(0xFF000000) // Black screen
+    // Заполняем экран цветом фона из палитры (индекс 0)
+    const bgColor = this.getPaletteColor(0)
+    this.screenBuffer.fill(bgColor)
   }
 
   // State

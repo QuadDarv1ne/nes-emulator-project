@@ -7,7 +7,7 @@ import { Emulator } from '@/components/emulator'
 import { Footer } from '@/components/footer'
 import { Gamepad2, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function generateParticles() {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -21,7 +21,11 @@ function generateParticles() {
 
 export default function Home() {
   const { t } = useI18n()
-  const [particles] = useState<Array<{ x: number; y: number; duration: number; delay: number; targetY: number }>>(() => generateParticles())
+  const [particles, setParticles] = useState<Array<{ x: number; y: number; duration: number; delay: number; targetY: number }>>([])
+
+  useEffect(() => {
+    setParticles(generateParticles())
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20 flex flex-col">
