@@ -16,6 +16,8 @@ export function Emulator() {
   const [state, setState] = useState<EmulatorState | null>(null)
   const nesRef = useRef<NES | null>(null)
   const intervalRef = useRef<number | null>(null)
+  const autoSaveIntervalRef = useRef<number | null>(null)
+  const STORAGE_KEY = 'nes-emulator-save-state'
 
   // Cleanup on unmount
   useEffect(() => {
@@ -23,9 +25,47 @@ export function Emulator() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
       }
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current)
+      }
       if (nesRef.current) {
         nesRef.current.stop()
       }
+    }
+  }, [])
+
+  // Auto-save state to localStorage every 5 minutes
+  useEffect(() => {
+    if (nesRef.current) {
+      // Clear any existing auto-save interval
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current)
+      }
+
+      // Set up auto-save every 5 minutes (300000ms)
+      autoSaveIntervalRef.current = window.setInterval(() => {
+        try {
+          const saveState = nesRef.current!.saveState()
+          const data = JSON.stringify(saveState)
+          localStorage.setItem(STORAGE_KEY, data)
+          console.log('Auto-saved state to localStorage')
+        } catch (error) {
+          console.error('Auto-save failed:', error)
+        }
+      }, 300000) // 5 minutes
+    }
+  }, [nes])
+
+  // Load auto-saved state on mount
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY)
+      if (savedState && nesRef.current) {
+        console.log('Found auto-saved state in localStorage')
+        // State will be loaded when user clicks load button
+      }
+    } catch (error) {
+      console.error('Failed to load auto-saved state:', error)
     }
   }, [])
 
@@ -125,6 +165,38 @@ export function Emulator() {
     input.click()
   }, [])
 
+  const handleLoadAutoSave = useCallback(() => {
+    if (!nesRef.current) {
+      toast.error('Нет активного эмулятора')
+      return
+    }
+
+    try {
+      const savedState = localStorage.getItem('nes-emulator-save-state')
+      if (!savedState) {
+        toast.error('Нет автосохранения')
+        return
+      }
+
+      const saveState = JSON.parse(savedState)
+      nesRef.current.loadState(saveState)
+      toast.success('Автосохранение загружено')
+    } catch (err) {
+      console.error('Failed to load auto-save:', err)
+      toast.error('Ошибка загрузки автосохранения')
+    }
+  }, [])
+
+  const handleClearAutoSave = useCallback(() => {
+    try {
+      localStorage.removeItem('nes-emulator-save-state')
+      toast.success('Автосохранение очищено')
+    } catch (err) {
+      console.error('Failed to clear auto-save:', err)
+      toast.error('Ошибка очистки автосохранения')
+    }
+  }, [])
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-4 md:space-y-6">
       {/* ROM Loader */}
@@ -192,6 +264,26 @@ export function Emulator() {
                 >
                   <Upload className="h-4 w-4" />
                 </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleLoadAutoSave}
+                  title="Загрузить автосохранение"
+                  className="h-10 w-10"
+                >
+                  <span className="text-xs font-bold">A</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleClearAutoSave}
+                  title="Очистить автосохранение"
+                  className="h-10 w-10"
+                >
+                  <span className="text-xs font-bold">✕</span>
+                </Button>
               </div>
 
               {/* Info */}
@@ -202,6 +294,9 @@ export function Emulator() {
                     <span>FPS: {state.fps}</span>
                     <span>Frames: {state.frameCount}</span>
                     {state.paused && <span className="text-yellow-500">PAUSED</span>}
+                    {localStorage.getItem('nes-emulator-save-state') && (
+                      <span className="text-green-500" title="Есть автосохранение">💾</span>
+                    )}
                   </div>
                 )}
               </div>
