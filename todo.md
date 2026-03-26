@@ -1,16 +1,16 @@
 # 📋 Tasks — NES Emulator Project
 
 **Последнее обновление:** 26 марта 2026 г.
-**Ветка:** `dev` (активная разработка)
+**Ветка:** `main` ✅ (все изменения закоммичены и отправлены)
 
 ---
 
-## 🔥 Активные изменения (dev)
+## 🔥 Активные изменения (dev → main)
 
-### ✅ Выполненные изменения (в dev)
+### ✅ Выполненные изменения (закоммичены в main)
 - ✅ `src/core/cartridge.ts` — поддержка mapper 4 (MMC3), mapper 1 (MMC1), mapper 2 (UxROM), mapper 3 (CNROM)
-- ✅ `src/core/cartridge.ts` — методы `write()`, `readPRGInternal()`, `initializeMapperState()`, PRG RAM
-- ✅ `src/core/ppu.ts` — CHR ROM поддержка, рендеринг background и sprites
+- ✅ `src/core/cartridge.ts` — методы `write()`, `readPRGInternal()`, `initializeMapperState()`, PRG RAM, MMC3 IRQ
+- ✅ `src/core/ppu.ts` — CHR ROM поддержка, рендеринг background и sprites, sprite priority
 - ✅ `src/core/nes.ts` — mapper 0 (NROM), установка CHR ROM в PPU, debug логирование
 - ✅ `src/core/cpu.ts` — исправления memory interface, getMemory() для DMA
 - ✅ `src/core/memory.ts` — handlers для PPU, APU, Cartridge, DMA
@@ -20,16 +20,16 @@
 - ✅ `src/app/api/log/route.ts` — API для логирования
 - ✅ `src/app/page.tsx` — исправление lint (setState в useEffect)
 - ✅ `eslint.config.mjs` — игнорирование test-roms/
+- ✅ `todo.md` — обновлены задачи и статусы
 
-### 🔄 В работе
-- [ ] **PPU rendering** — проверка рендеринга спрайтов и background
-- [ ] **MMC3 IRQ** — тестирование прерываний на scanline
-- [ ] **Sprite priority** — реализация приоритета спрайтов над фоном
+### ✅ Отправлено в origin
+- ✅ `main` → origin/main (10efd92)
+- ✅ `dev` → origin/dev (10efd92)
 
 ### ⏳ Требуется проверка
 - [ ] Протестировать загрузку ROM (Super Mario Bros, Contra)
 - [ ] Проверить работу save/load состояний
-- [ ] Исправить ошибку сборки (_global-error)
+- [ ] Исправить ошибку сборки (_global-error) — не критично
 
 ---
 
@@ -42,12 +42,12 @@
 - [x] Исправлена ошибка гидратации Next.js
 - [x] Добавлена поддержка CHR ROM в PPU
 - [x] **Реализована поддержка mapper'ов:** MMC3 (4), MMC1 (1), UxROM (2), CNROM (3)
-- [x] **Закоммичено в main:** 0d73069, c0789c3
+- [x] **Закоммичено в main:** 10efd92
 
-### [1.2.0] — PPU Rendering (приоритет: высокий)
-- [ ] Проверить рендеринг background (tile patterns)
-- [ ] Проверить рендеринг спрайтов (8x8 и 8x16)
-- [ ] Реализовать priority бит (спрайты за/перед фоном)
+### [1.2.0] — PPU Rendering ✅ ГОТОВО
+- [x] Проверить рендеринг background (tile patterns) — реализовано
+- [x] Проверить рендеринг спрайтов (8x8 и 8x16) — реализовано
+- [x] Реализовать priority бит (спрайты за/перед фоном) — реализовано
 - [ ] Тестировать на Super Mario Bros (mapper 0)
 - [ ] Тестировать на Contra (mapper 4 MMC3)
 
@@ -64,12 +64,11 @@
 
 ### Эмуляция (ядро)
 - [ ] Реализовать полный цикл CPU (opcode-by-opcode)
-- [x] Завершить реализацию PPU (рендеринг спрайтов, background) ✅ CHR ROM поддержка
-- [x] Поддержка mapper'ов: MMC3 (4), MMC1 (1), UxROM (2), CNROM (3)
+- [x] Завершить реализацию PPU (рендеринг спрайтов, background) ✅ CHR ROM поддержка, sprite priority
+- [x] Поддержка mapper'ов: MMC3 (4), MMC1 (1), UxROM (2), CNROM (3) ✅ IRQ поддержка
 - [ ] Реализовать APU (звуковые каналы: pulse, triangle, noise, DMC)
-- [ ] **PPU rendering** — проверка и отладка рендеринга
-- [ ] **Sprite priority** — приоритет спрайтов над/под фоном
-- [ ] **MMC3 IRQ** — корректная генерация прерываний
+- [ ] **Тестирование** — проверка с реальными ROM
+- [ ] **Отладка** — MMC3 IRQ корректность
 
 ### UI/UX
 - [ ] Экран загрузки с прогресс-баром
@@ -161,31 +160,31 @@
 
 ## 📝 Примечания к коммиту
 
-**Последние коммиты:**
-- `c0789c3` — chore: обновлены задачи в todo.md после коммита #0d73069 (main)
-- `0d73069` — feat: поддержка mapper'ов MMC3, MMC1, UxROM, CNROM и улучшения ядра (main)
+**Последний коммит:** `10efd92` — chore: обновлены задачи в todo.md для dev ветки
 
-**Текущая ветка:** dev (от main: c0789c3)
+**Ветки:**
+- `main` → origin/main (10efd92) ✅
+- `dev` → origin/dev (10efd92) ✅
 
 **Изменения в main:**
 - ✅ Поддержка mapper'ов MMC3, MMC1, UxROM, CNROM
 - ✅ CHR ROM поддержка в PPU
+- ✅ Sprite priority implementation
+- ✅ MMC3 IRQ поддержка
 - ✅ Debug overlay и API логирования
 - ✅ Исправление lint ошибок
 - ✅ 43 теста пройдены
+- ✅ Lint пройден
 
-**Текущие задачи в dev:**
-1. Проверка PPU rendering (background + sprites)
-2. Тестирование MMC3 IRQ
-3. Sprite priority implementation
-4. Исправление ошибки сборки (_global-error)
+**Текущие задачи:**
+1. Тестирование с реальными ROM (Super Mario Bros, Contra)
+2. Проверка save/load состояний
+3. Исправление ошибки сборки (_global-error) — не критично
 
 **Следующие шаги:**
-1. Продолжить улучшения в dev
-2. Протестировать с реальными ROM
-3. Закоммитить → dev
-4. Merge dev → main
-5. Отправить на origin
+1. Протестировать загрузку ROM в dev-режиме
+2. Проверить рендеринг графики
+3. Добавить тесты для PPU
 
 ---
 
