@@ -8,6 +8,7 @@ import { RomLoader } from './rom-loader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Gamepad2, Play, Pause, RotateCcw, Download, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 
 export function Emulator() {
   const [nes, setNes] = useState<NES | null>(null)
@@ -29,20 +30,29 @@ export function Emulator() {
   }, [])
 
   const handleROMLoaded = useCallback((loadedNes: NES, name: string) => {
-    // Cleanup previous interval if exists
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
+    try {
+      // Cleanup previous interval if exists
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+
+      nesRef.current = loadedNes
+      setNes(loadedNes)
+      setRomName(name)
+      loadedNes.start()
+
+      toast.success(`ROM загружен: ${name}`)
+
+      // Update state periodically
+      intervalRef.current = window.setInterval(() => {
+        setState(loadedNes.getState())
+      }, 1000)
+    } catch (error) {
+      console.error('Failed to start emulator:', error)
+      toast.error('Ошибка запуска эмулятора')
+      setNes(null)
+      setRomName('')
     }
-
-    nesRef.current = loadedNes
-    setNes(loadedNes)
-    setRomName(name)
-    loadedNes.start()
-
-    // Update state periodically
-    intervalRef.current = window.setInterval(() => {
-      setState(loadedNes.getState())
-    }, 1000)
   }, [])
 
   const handlePause = useCallback(() => {
@@ -59,42 +69,59 @@ export function Emulator() {
   }, [])
 
   const handleSaveState = useCallback(() => {
-    if (!nesRef.current) return
-    
-    const saveState = nesRef.current.saveState()
-    const data = JSON.stringify(saveState)
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${romName || 'save'}.state.json`
-    a.click()
-    
-    URL.revokeObjectURL(url)
+    if (!nesRef.current) {
+      toast.error('Нет активного эмулятора')
+      return
+    }
+
+    try {
+      const saveState = nesRef.current.saveState()
+      const data = JSON.stringify(saveState)
+      const blob = new Blob([data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${romName || 'save'}.state.json`
+      a.click()
+
+      URL.revokeObjectURL(url)
+      toast.success('Состояние сохранено')
+    } catch (error) {
+      console.error('Failed to save state:', error)
+      toast.error('Ошибка сохранения состояния')
+    }
   }, [romName])
 
   const handleLoadState = useCallback(() => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.json'
-    
+
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file || !nesRef.current) return
-      
+      if (!file || !nesRef.current) {
+        toast.error('Нет активного эмулятора')
+        return
+      }
+
       const reader = new FileReader()
       reader.onload = (event) => {
         try {
           const saveState = JSON.parse(event.target?.result as string)
           nesRef.current?.loadState(saveState)
+          toast.success('Состояние загружено')
         } catch (err) {
           console.error('Failed to load state:', err)
+          toast.error('Ошибка загрузки состояния')
         }
+      }
+      reader.onerror = () => {
+        toast.error('Ошибка чтения файла')
       }
       reader.readAsText(file)
     }
-    
+
     input.click()
   }, [])
 

@@ -16,7 +16,20 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
   const animationRef = useRef<number>(0)
   const nesRef = useRef<NES | null>(null)
   const imageDataRef = useRef<ImageData | null>(null)
+  const canvasCtxRef = useRef<CanvasRenderingContext2D | null>(null)
   const isReady = !!nes
+
+  // Инициализация canvas
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d', { alpha: false })
+    if (!ctx) return
+
+    ctx.imageSmoothingEnabled = false
+    canvasCtxRef.current = ctx
+  }, [])
 
   useEffect(() => {
     nesRef.current = nes
@@ -24,14 +37,11 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
 
   const render = useCallback(() => {
     const currentNes = nesRef.current
-    const canvas = canvasRef.current
-    if (!currentNes || !canvas) return
-
-    const ctx = canvas.getContext('2d', { alpha: false })
-    if (!ctx) return
+    const ctx = canvasCtxRef.current
+    if (!currentNes || !ctx) return
 
     const buffer = currentNes.getScreenBuffer()
-    if (!buffer) return
+    if (!buffer || buffer.length !== 256 * 240) return
 
     // Создаем ImageData только один раз для производительности
     if (!imageDataRef.current) {
@@ -61,21 +71,23 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
 
       const renderLoop = (currentTime: number) => {
         const deltaTime = currentTime - lastTime
-        
+
         if (deltaTime >= frameInterval) {
           render()
           lastTime = currentTime - (deltaTime % frameInterval)
         }
-        
+
         animationRef.current = requestAnimationFrame(renderLoop)
       }
-      
+
       animationRef.current = requestAnimationFrame(renderLoop)
     }
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
+      // Очистка ImageData при unmount
+      imageDataRef.current = null
     }
   }, [nes, isReady, render])
 
@@ -89,8 +101,8 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
         style={{ imageRendering: 'pixelated' }}
       />
       {!isReady && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-          <div className="text-white text-sm">Ожидание ROM...</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg backdrop-blur-sm">
+          <div className="text-white text-sm font-medium">Ожидание ROM...</div>
         </div>
       )}
     </div>
