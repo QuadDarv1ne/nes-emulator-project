@@ -174,9 +174,13 @@ export class PPU {
     return this.spriteMemory[this.address]
   }
 
-  // Sprite DMA
-  writeOAMDMA(value: number) {
-    // DMA from CPU memory (handled by CPU)
+  // Sprite DMA - transfer 256 bytes from CPU memory to OAM
+  // page: the page number (0x00-0xFF), actual address is page * 256
+  writeOAMDMA(page: number, cpuMemory: Uint8Array) {
+    const addr = (page << 8) & 0xFFFF
+    for (let i = 0; i < 256; i++) {
+      this.spriteMemory[i] = cpuMemory[(addr + i) & 0xFFFF]
+    }
   }
 
   // PPU step (called every CPU cycle)
@@ -253,27 +257,27 @@ export class PPU {
   }
 
   private renderBackground(baseAddr: number, scanline: number) {
-    const nameTableAddr = 0x2000
     const patternTableAddr = (this.ctrl & 0x10) ? 0x1000 : 0x0000
-    
-    for (let x = 0; x < 256; x += 8) {
-      const tileX = x >> 3
+    const fineX = (this.scrollX & 0x07)
+
+    for (let tileRow = 0; tileRow < 33; tileRow++) { // 32 tiles + 1 for scroll
+      const tileX = tileRow
       const tileY = scanline >> 3
       const nameTableIndex = tileY * 32 + tileX
       const tileIndex = this.vram[nameTableIndex & 0x03FF]
-      
+
       const patternAddr = patternTableAddr + (tileIndex * 16) + (scanline & 7)
       const lowByte = this.vram[patternAddr & 0x0FFF]
       const highByte = this.vram[(patternAddr + 8) & 0x0FFF]
-      
+
       for (let bit = 7; bit >= 0; bit--) {
-        const pixelX = x + (7 - bit)
-        if (pixelX >= 256) continue
-        
+        const pixelX = (tileRow * 8) + (7 - bit) - fineX
+        if (pixelX < 0 || pixelX >= 256) continue
+
         const low = (lowByte >> bit) & 1
         const high = (highByte >> bit) & 1
         const colorIndex = (high << 1) | low
-        
+
         if (colorIndex !== 0) {
           const color = this.getPaletteColor(colorIndex)
           this.screenBuffer[baseAddr + pixelX] = color
@@ -285,7 +289,10 @@ export class PPU {
   private renderSprites(baseAddr: number, scanline: number) {
     const spriteHeight = (this.ctrl & 0x20) ? 16 : 8
     const patternTableAddr = (this.ctrl & 0x08) ? 0x1000 : 0x0000
-    
+
+    // Sprite 0 hit detection
+    let sprite0Hit = false
+
     // Render sprites in reverse order (priority)
     for (let i = 63; i >= 0; i--) {
       const spriteAddr = i * 4
@@ -293,34 +300,49 @@ export class PPU {
       const tileIndex = this.spriteMemory[spriteAddr + 1]
       const attrs = this.spriteMemory[spriteAddr + 2]
       const tileX = this.spriteMemory[spriteAddr + 3]
-      
+
       // Check if sprite is on this scanline
       if (scanline < tileY || scanline >= tileY + spriteHeight) continue
-      
+
       const flipH = (attrs & 0x40) !== 0
       const flipV = (attrs & 0x80) !== 0
+      const priority = (attrs & 0x20) !== 0 // 1 = behind background
       const paletteOffset = (attrs & 0x03) * 4
-      
+
       let row = scanline - tileY
       if (flipV) {
         row = spriteHeight - 1 - row
       }
-      
+
       const patternAddr = patternTableAddr + (tileIndex * 16) + row
       const lowByte = this.vram[patternAddr & 0x0FFF]
       const highByte = this.vram[(patternAddr + 8) & 0x0FFF]
-      
+
       for (let bit = 7; bit >= 0; bit--) {
         const pixelX = flipH ? (tileX + (7 - bit)) : (tileX + bit)
-        if (pixelX >= 256) continue
-        
+        if (pixelX < 0 || pixelX >= 256) continue
+
         const low = (lowByte >> bit) & 1
         const high = (highByte >> bit) & 1
         const colorIndex = (high << 1) | low
-        
+
         if (colorIndex !== 0) {
+          const bgPixel = this.screenBuffer[baseAddr + pixelX]
+          const isBgTransparent = (bgPixel & 0xFF000000) === 0xFF000000 && ((bgPixel & 0xFFFFFF) === 0)
+
+          // Priority check: if sprite has priority bit set, only show if background is transparent
+          if (priority && !isBgTransparent) {
+            continue
+          }
+
           const color = this.getSpritePaletteColor(colorIndex + paletteOffset)
           this.screenBuffer[baseAddr + pixelX] = color
+
+          // Sprite 0 hit detection
+          if (i === 0 && !sprite0Hit && !isBgTransparent) {
+            sprite0Hit = true
+            this.status |= 0x40 // Set sprite 0 hit flag
+          }
         }
       }
     }

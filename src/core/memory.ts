@@ -11,7 +11,7 @@ export class Memory {
   private ram: Uint8Array
   private ppuRegisters: Uint8Array
   private apuRegisters: Uint8Array
-  
+
   // Callbacks for hardware access
   private onPPURead?: (addr: number) => number
   private onPPUWrite?: (addr: number, value: number) => void
@@ -19,6 +19,7 @@ export class Memory {
   private onAPUWrite?: (addr: number, value: number) => void
   private onCartridgeRead?: (addr: number) => number
   private onCartridgeWrite?: (addr: number, value: number) => void
+  private onDMA?: (page: number) => void
 
   constructor() {
     this.ram = new Uint8Array(0x0800) // 2KB
@@ -48,6 +49,10 @@ export class Memory {
   ) {
     this.onCartridgeRead = onRead
     this.onCartridgeWrite = onWrite
+  }
+
+  setDMAHandler(handler: (page: number) => void) {
+    this.onDMA = handler
   }
 
   read(addr: number): number {
@@ -111,6 +116,15 @@ export class Memory {
     // APU and I/O
     if (addr >= 0x4000 && addr < 0x4020) {
       const reg = addr - 0x4000
+
+      // OAM DMA register ($4014)
+      if (reg === 0x14) {
+        if (this.onDMA) {
+          this.onDMA(value)
+        }
+        return
+      }
+
       if (this.onAPUWrite) {
         this.onAPUWrite(reg, value)
         return
