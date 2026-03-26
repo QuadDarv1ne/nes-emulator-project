@@ -5,6 +5,8 @@ import { NES, EmulatorState } from '@/core'
 import { EmulatorScreen } from './screen'
 import { EmulatorControls } from './controls'
 import { RomLoader } from './rom-loader'
+import { ROMHistoryList } from '../rom-history-list'
+import { addROMToHistory } from '@/lib/rom-history'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Gamepad2, Play, Pause, RotateCcw, Download, Upload } from 'lucide-react'
@@ -190,6 +192,18 @@ export function Emulator() {
 
       toast.success(`ROM загружен: ${name}`)
 
+      // Add to ROM history
+      const rom = (loadedNes as any).cartridge?.rom
+      if (rom) {
+        addROMToHistory({
+          title: name,
+          fileName: name + '.nes',
+          mapperId: rom.mapperId,
+          prgSize: rom.prgROM.length,
+          chrSize: rom.chrROM.length,
+        })
+      }
+
       // Update state periodically
       intervalRef.current = window.setInterval(() => {
         setState(loadedNes.getState())
@@ -308,11 +322,19 @@ export function Emulator() {
     <div className="w-full max-w-6xl mx-auto space-y-4 md:space-y-6">
       {/* ROM Loader */}
       {!nes && (
-        <Card>
-          <CardContent className="pt-6">
-            <RomLoader onROMLoaded={handleROMLoaded} />
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <RomLoader onROMLoaded={handleROMLoaded} />
+            </CardContent>
+          </Card>
+          
+          {/* ROM History */}
+          <ROMHistoryList onROMSelect={(fileName) => {
+            toast.info(`Выбран ROM: ${fileName}`)
+            // Auto-load ROM functionality can be added here
+          }} />
+        </>
       )}
 
       {/* Emulator */}
