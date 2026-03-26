@@ -8,7 +8,7 @@ import { Footer } from '@/components/footer'
 import { DebugOverlay } from '@/components/debug-overlay'
 import { Gamepad2, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 function generateParticles() {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -22,11 +22,7 @@ function generateParticles() {
 
 export default function Home() {
   const { t } = useI18n()
-  const [particles, setParticles] = useState<Array<{ x: number; y: number; duration: number; delay: number; targetY: number }>>([])
-
-  useEffect(() => {
-    setParticles(generateParticles())
-  }, [])
+  const [particles, setParticles] = useState<Array<{ x: number; y: number; duration: number; delay: number; targetY: number }>>(() => generateParticles())
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20 flex flex-col">

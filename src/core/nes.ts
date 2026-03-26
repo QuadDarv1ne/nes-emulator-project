@@ -77,19 +77,6 @@ export class NES {
         }
       },
       (addr, value) => {
-        // Debug: логирование записей в PPU
-        if (addr === 0x06 || addr === 0x07) {
-          const logMsg = `CPU write PPU[$${addr.toString(16)}] = $${value.toString(16)}`
-          console.log(logMsg)
-          if (typeof window !== 'undefined' && Math.random() < 0.01) {
-            fetch('/api/log', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: logMsg, level: 'info' })
-            }).catch(() => {})
-          }
-        }
-        
         switch (addr) {
           case 0x00: this.ppu.writeCtrl(value); break
           case 0x01: this.ppu.writeMask(value); break
@@ -105,6 +92,11 @@ export class NES {
     // Setup NMI handler
     this.ppu.setNMIHandler(() => {
       this.cpu.triggerNMI()
+    })
+
+    // PPU CHR read handler (для MMC3 bank switching)
+    this.ppu.setCHRReadHandler((addr) => {
+      return this.cartridge.readCHR(addr)
     })
 
     // APU handlers
@@ -131,31 +123,12 @@ export class NES {
     // Cartridge handlers
     this.memory.setCartridgeHandlers(
       (addr) => {
-        const rom = this.cartridge.getROM()
-        if (!rom) return 0
-
-        // PRG ROM mapping - support mapper 0 (NROM) and simple mappers
-        // PRG ROM is mapped to 0x8000-0xFFFF
-        if (addr >= 0x8000 && addr <= 0xFFFF) {
-          const prgSize = rom.prgROM.length
-          // For 16KB PRG ROM, mirror to both banks (0x8000-0xBFFF and 0xC000-0xFFFF)
-          if (prgSize === 0x4000) {
-            return rom.prgROM[addr & 0x3FFF]
-          }
-          // For 32KB+ PRG ROM, use full address space
-          return rom.prgROM[addr - 0x8000]
-        }
-        
-        // Return 0 for unmapped cartridge space (0x4020-0x7FFF)
-        return 0
+        // Чтение из PRG ROM через cartridge
+        return this.cartridge.readPRG(addr)
       },
       (addr, value) => {
-        // Cartridge writes (for mappers) - basic mapper 0 support
-        const rom = this.cartridge.getROM()
-        if (!rom || rom.mapperId !== 0) return
-        
-        // Mapper 0 (NROM) doesn't have bank switching
-        // No write handling needed
+        // Запись в регистры маппера (для MMC3 bank switching)
+        this.cartridge.write(addr, value)
       }
     )
 
@@ -168,44 +141,40 @@ export class NES {
 
   loadROM(data: Uint8Array): ROM {
     const rom = this.cartridge.load(data)
-    
+
+    // Инициализируем состояние маппера (для MMC3)
+    this.cartridge.initializeMapperState()
+
     // Устанавливаем CHR ROM в PPU
     this.ppu.setCHRROM(rom.chrROM)
-    
+
+    // Сбрасываем memory и CPU
+    this.memory.reset()
     this.cpu.reset()
     this.ppu.reset()
     this.apu.reset()
-    this.memory.reset()
     this.frameCount = 0
-    
-    // Debug: проверяем reset vector
+
+    // Debug: проверяем reset vector и первые байты кода
     const resetLow = this.memory.read(0xFFFC)
     const resetHigh = this.memory.read(0xFFFD)
     const resetAddr = (resetLow | (resetHigh << 8)) & 0xFFFF
-    const logMsg = `Reset vector: ${resetAddr.toString(16)} (${resetLow.toString(16)} ${resetHigh.toString(16)}) | PRG ROM[0]: ${rom.prgROM[0].toString(16)} | PC: ${this.cpu.getState().pc.toString(16)}`
     
-    // Отправляем лог на сервер
-    if (typeof window !== 'undefined') {
-      fetch('/api/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: logMsg, level: 'info' })
-      }).catch(() => {})
-      
-      fetch('/api/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `ROM: ${rom.title}, Mapper: ${rom.mapperId}, PRG: ${rom.prgROM.length}, CHR: ${rom.chrROM.length}`, level: 'info' })
-      }).catch(() => {})
+    // Читаем первые 8 байт кода по адресу reset
+    const codeBytes: number[] = []
+    for (let i = 0; i < 8; i++) {
+      codeBytes.push(this.cartridge.readPRG(resetAddr + i))
     }
     
-    console.log(logMsg)
-    console.log('ROM loaded:', rom.title, 'Mapper:', rom.mapperId, 'PRG:', rom.prgROM.length, 'CHR:', rom.chrROM.length)
-    
+    console.log(`Mapper ${rom.mapperId}: Reset=${resetAddr.toString(16).toUpperCase()}, Code=${codeBytes.map(b => b.toString(16).padStart(2, '0')).join(' ')}`)
+    console.log(`PRG: ${rom.prgROM.length}, CHR: ${rom.chrROM.length}, Banks: ${rom.prgROM.length / 8192}`)
+    console.log(`Battery: ${rom.battery}, Mirror: ${rom.mirrorMode}, PRG RAM: ${rom.prgRAM ? 'yes' : 'no'}`)
+
     return rom
   }
 
   start() {
+    if (typeof window === 'undefined') return
     this.running = true
     this.paused = false
     this.lastTime = performance.now()
@@ -227,13 +196,10 @@ export class NES {
     this.apu.reset()
     this.memory.reset()
     this.frameCount = 0
-    
-    // Debug после reset
-    console.log('CPU PC after reset:', this.cpu.getState().pc.toString(16))
   }
 
   private run() {
-    if (!this.running) return
+    if (!this.running || typeof window === 'undefined') return
 
     const currentTime = performance.now()
     const deltaTime = currentTime - this.lastTime
@@ -262,11 +228,28 @@ export class NES {
         }
       }
 
-      // Render scanline after PPU step
+      // Render scanline once per CPU cycle
       this.ppu.renderScanline()
+
+      // MMC3 IRQ step on each scanline (after rendering)
+      // Pass current scanline for proper timing
+      const irqTriggered = this.cartridge.stepIRQ(this.ppu.getScanline())
+      if (irqTriggered) {
+        this.cpu.triggerIRQ()
+        // Debug: log IRQ
+        if (this.frameCount < 5) {
+          console.log(`MMC3 IRQ triggered at scanline=${this.ppu.getScanline()}`)
+        }
+      }
 
       // Step APU
       this.apu.step()
+    }
+    
+    // Debug: каждые 60 кадров выводим состояние PPU
+    if (this.frameCount > 0 && this.frameCount % 60 === 0) {
+      const ppuState = this.ppu.getState()
+      console.log(`PPU: scanline=${ppuState.scanline}, cycle=${ppuState.cycle}, mask=${ppuState.mask.toString(16)}, ctrl=${ppuState.ctrl.toString(16)}`)
     }
   }
 

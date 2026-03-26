@@ -171,12 +171,7 @@ export class CPU {
     addr &= 0xFFFF
     // Если есть memory interface, используем его
     if (this.memoryInterface) {
-      const value = this.memoryInterface.read(addr)
-      // Debug: логирование чтений из cartridge
-      if (addr >= 0x8000 && this.stepCount < 20) {
-        console.log(`CPU read[$${addr.toString(16)}] = $${value.toString(16)}`)
-      }
-      return value
+      return this.memoryInterface.read(addr)
     }
     // Fallback к внутренней памяти (для совместимости)
     if (addr < 0x2000) {
@@ -1167,9 +1162,9 @@ export class CPU {
       return 2
     }
 
-    // Debug: логирование первых инструкций
-    if (this.stepCount < 10) {
-      console.log(`CPU [${(this.pc - 1).toString(16).padStart(4, '0')}] ${instruction.mnemonic} opcode:0x${opcode.toString(16).padStart(2, '0')} A:${this.a.toString(16).padStart(2, '0')} X:${this.x.toString(16).padStart(2, '0')} Y:${this.y.toString(16).padStart(2, '0')}`)
+    // Debug: первые 100 инструкций
+    if (this.stepCount < 100) {
+      console.log(`CPU[${this.stepCount}] PC=${(this.pc - 1).toString(16).toUpperCase()} OP=${opcode.toString(16).toUpperCase()} ${instruction.mnemonic} A=${this.a.toString(16).padStart(2, '0')} X=${this.x.toString(16).padStart(2, '0')} Y=${this.y.toString(16).padStart(2, '0')} S=${this.sp.toString(16).padStart(2, '0')}`)
       this.stepCount++
     }
 

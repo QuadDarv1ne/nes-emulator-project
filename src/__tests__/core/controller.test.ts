@@ -34,17 +34,17 @@ describe('Controller', () => {
     it('should read buttons in order', () => {
       controller.press(Button.A)
       controller.press(Button.Start)
-      
+
       // Strobe
       controller.write(0x01)
       controller.write(0x00)
-      
+
       // Read all 8 buttons
-      const reads = []
+      const reads: number[] = []
       for (let i = 0; i < 8; i++) {
         reads.push(controller.read())
       }
-      
+
       expect(reads[Button.A]).toBe(1)
       expect(reads[Button.Start]).toBe(1)
     })

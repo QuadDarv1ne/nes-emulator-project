@@ -70,6 +70,7 @@ export class PPU {
 
   // Callback for NMI
   private onNMI?: () => void
+  private onCHRRead?: (addr: number) => number
 
   constructor() {
     this.vram = new Uint8Array(0x0800) // 2KB
@@ -86,6 +87,10 @@ export class PPU {
     this.chrROM = chrROM
   }
 
+  setCHRReadHandler(handler: (addr: number) => number) {
+    this.onCHRRead = handler
+  }
+
   // Register access
   writeCtrl(value: number) {
     this.ctrl = value
@@ -95,19 +100,6 @@ export class PPU {
   writeMask(value: number) {
     const oldMask = this.mask
     this.mask = value
-    
-    // Debug: логирование включения display
-    if ((value & 0x18) !== 0 && (oldMask & 0x18) === 0) {
-      const logMsg = `PPU mask: ${value.toString(16)} bg:${!!(value & 0x08)} sprites:${!!(value & 0x10)}`
-      console.log(logMsg)
-      if (typeof window !== 'undefined') {
-        fetch('/api/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: logMsg, level: 'info' })
-        }).catch(() => {})
-      }
-    }
   }
 
   readStatus(): number {
@@ -132,7 +124,6 @@ export class PPU {
     } else {
       this.address = ((this.address & 0xFF00) | value) & 0x3FFF
     }
-    this.address = (this.address + 1) & 0x3FFF
   }
 
   writeData(value: number) {
@@ -143,21 +134,6 @@ export class PPU {
     } else if (addr >= 0x2000 && addr < 0x3F00) {
       // Name tables (with mirroring)
       this.vram[0x1000 + (addr & 0x0FFF)] = value
-      
-      // Debug: логирование первых записей в name table
-      if (this.frameCount < 3 && addr >= 0x2000 && addr < 0x23C0) {
-        if (Math.random() < 0.001) {
-          const logMsg = `PPU write name table: $${addr.toString(16)} = $${value.toString(16)}`
-          console.log(logMsg)
-          if (typeof window !== 'undefined') {
-            fetch('/api/log', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: logMsg, level: 'info' })
-            }).catch(() => {})
-          }
-        }
-      }
     } else if (addr >= 0x3F00 && addr < 0x4000) {
       // Palette RAM (with mirrors)
       const paletteAddr = addr & 0x1F
@@ -166,19 +142,6 @@ export class PPU {
         this.palette[paletteAddr & 0x0F] = value & 0x3F
       } else {
         this.palette[paletteAddr] = value & 0x3F
-      }
-      
-      // Debug: логирование записи в палитру
-      if (this.frameCount < 3 && Math.random() < 0.01) {
-        const logMsg = `PPU write palette: $${paletteAddr.toString(16)} = $${(value & 0x3F).toString(16)}`
-        console.log(logMsg)
-        if (typeof window !== 'undefined') {
-          fetch('/api/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: logMsg, level: 'info' })
-          }).catch(() => {})
-        }
       }
     }
     this.address = (this.address + 1) & 0x3FFF
@@ -254,10 +217,14 @@ export class PPU {
         this.status |= 0x80 // Set VBlank flag
         this.nmiOccurred = true
         this.nmiPending = true
-        
+
         // Trigger NMI immediately if enabled
         if (this.nmiOutput && this.onNMI) {
           this.nmiPending = false
+          // Debug: log NMI
+          if (this.scanline < 300) {
+            console.log(`PPU: VBlank NMI triggered, ctrl=${this.ctrl.toString(16)}`)
+          }
           this.onNMI()
         }
       }
@@ -294,41 +261,48 @@ export class PPU {
         this.screenBuffer[baseAddr + x] = bgColor
       }
 
-      // Render background
-      if (this.mask & 0x08) { // Background enabled
+      // Render background (проверяем бит 3 mask)
+      if (this.mask & 0x08) {
         this.renderBackground(baseAddr, y)
       }
 
-      // Render sprites
-      if (this.mask & 0x10) { // Sprites enabled
+      // Render sprites (проверяем бит 4 mask)
+      if (this.mask & 0x10) {
         this.renderSprites(baseAddr, y)
       }
-    }
-    
-    // Отладка: выводим информацию о рендеринге каждые 60 кадров
-    if (this.scanline === 240 && this.frameCount % 60 === 0) {
-      console.log('PPU frame:', this.frameCount, 'mask:', this.mask.toString(16), 'bgColor:', this.getPaletteColor(0).toString(16))
     }
   }
 
   private renderBackground(baseAddr: number, scanline: number) {
-    // Pattern table from CHR ROM, or VRAM if no CHR ROM
-    const patternTable = this.chrROM.length > 0 ? this.chrROM : this.vram
-    const patternTableAddr = (this.ctrl & 0x10) ? 0x1000 : 0x0000
     const fineX = (this.scrollX & 0x07)
+    const fineY = (this.scrollY & 0x07)
 
-    for (let tileRow = 0; tileRow < 33; tileRow++) { // 32 tiles + 1 for scroll
-      const tileX = tileRow
-      const tileY = scanline >> 3
+    for (let tileX = 0; tileX < 32; tileX++) {
+      // Calculate tile Y position with scroll
+      const effectiveY = (scanline + fineY) & 0xFF
+      const tileY = effectiveY >> 3
+
+      // Get tile index from name table
       const nameTableIndex = tileY * 32 + tileX
       const tileIndex = this.vram[nameTableIndex & 0x03FF]
 
-      const patternAddr = patternTableAddr + (tileIndex * 16) + (scanline & 7)
-      const lowByte = patternTable[patternAddr & 0x1FFF]
-      const highByte = patternTable[(patternAddr + 8) & 0x1FFF]
+      // Get pattern table data for this tile
+      const patternAddr = (tileIndex * 16) + (effectiveY & 7)
+      
+      // Read from CHR ROM/VRAM using handler if available
+      let lowByte: number, highByte: number
+      if (this.onCHRRead) {
+        lowByte = this.onCHRRead(patternAddr)
+        highByte = this.onCHRRead(patternAddr + 8)
+      } else {
+        const patternTable = this.chrROM.length > 0 ? this.chrROM : this.vram
+        lowByte = patternTable[patternAddr & 0x1FFF]
+        highByte = patternTable[(patternAddr + 8) & 0x1FFF]
+      }
 
+      // Render 8 pixels for this tile
       for (let bit = 7; bit >= 0; bit--) {
-        const pixelX = (tileRow * 8) + (7 - bit) - fineX
+        const pixelX = (tileX * 8) + (7 - bit) - fineX
         if (pixelX < 0 || pixelX >= 256) continue
 
         const low = (lowByte >> bit) & 1
@@ -344,19 +318,13 @@ export class PPU {
   }
 
   private renderSprites(baseAddr: number, scanline: number) {
-    // Pattern table from CHR ROM, or VRAM if no CHR ROM
-    const patternTable = this.chrROM.length > 0 ? this.chrROM : this.vram
     const spriteHeight = (this.ctrl & 0x20) ? 16 : 8
-    const patternTableAddr = (this.ctrl & 0x08) ? 0x1000 : 0x0000
-
-    // Sprite 0 hit detection
-    let sprite0Hit = false
 
     // Render sprites in reverse order (priority)
     for (let i = 63; i >= 0; i--) {
       const spriteAddr = i * 4
       const tileY = this.spriteMemory[spriteAddr]
-      const tileIndex = this.spriteMemory[spriteAddr + 1]
+      let tileIndex = this.spriteMemory[spriteAddr + 1]
       const attrs = this.spriteMemory[spriteAddr + 2]
       const tileX = this.spriteMemory[spriteAddr + 3]
 
@@ -373,12 +341,33 @@ export class PPU {
         row = spriteHeight - 1 - row
       }
 
-      const patternAddr = patternTableAddr + (tileIndex * 16) + row
-      const lowByte = patternTable[patternAddr & 0x1FFF]
-      const highByte = patternTable[(patternAddr + 8) & 0x1FFF]
+      // For 8x16 sprites, bit 4 of tileIndex selects pattern table
+      let spritePatternAddr = 0
+      if (spriteHeight === 16) {
+        if (row > 7) {
+          tileIndex = (tileIndex & 0xFE) | 1 // Bottom half (odd tile)
+          row -= 8
+        } else {
+          tileIndex = tileIndex & 0xFE // Top half (even tile)
+        }
+        spritePatternAddr = (tileIndex & 0x01) ? 0x1000 : 0x0000
+      }
+
+      const patternAddr = spritePatternAddr + (tileIndex * 16) + row
+      
+      // Read from CHR ROM/VRAM using handler if available
+      let lowByte: number, highByte: number
+      if (this.onCHRRead) {
+        lowByte = this.onCHRRead(patternAddr)
+        highByte = this.onCHRRead(patternAddr + 8)
+      } else {
+        const patternTable = this.chrROM.length > 0 ? this.chrROM : this.vram
+        lowByte = patternTable[patternAddr & 0x1FFF]
+        highByte = patternTable[(patternAddr + 8) & 0x1FFF]
+      }
 
       for (let bit = 7; bit >= 0; bit--) {
-        const pixelX = flipH ? (tileX + (7 - bit)) : (tileX + bit)
+        const pixelX = flipH ? (tileX + bit) : (tileX + (7 - bit))
         if (pixelX < 0 || pixelX >= 256) continue
 
         const low = (lowByte >> bit) & 1
@@ -387,7 +376,7 @@ export class PPU {
 
         if (colorIndex !== 0) {
           const bgPixel = this.screenBuffer[baseAddr + pixelX]
-          const isBgTransparent = (bgPixel & 0xFF000000) === 0xFF000000 && ((bgPixel & 0xFFFFFF) === 0)
+          const isBgTransparent = (bgPixel & 0xFFFFFF) === 0
 
           // Priority check: if sprite has priority bit set, only show if background is transparent
           if (priority && !isBgTransparent) {
@@ -396,12 +385,6 @@ export class PPU {
 
           const color = this.getSpritePaletteColor(colorIndex + paletteOffset)
           this.screenBuffer[baseAddr + pixelX] = color
-
-          // Sprite 0 hit detection
-          if (i === 0 && !sprite0Hit && !isBgTransparent) {
-            sprite0Hit = true
-            this.status |= 0x40 // Set sprite 0 hit flag
-          }
         }
       }
     }
@@ -410,13 +393,15 @@ export class PPU {
   private getPaletteColor(index: number): number {
     const paletteIndex = this.palette[index & 0x1F] & 0x3F
     const rgb = PPU.PALETTE[paletteIndex]
-    return 0xFF000000 | rgb
+    // Конвертируем 0xRRGGBB в little-endian 0xAABBGGRR
+    return 0xFF000000 | ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb & 0xFF0000) >> 16)
   }
 
   private getSpritePaletteColor(index: number): number {
     const paletteIndex = this.palette[0x10 + (index & 0x1F)] & 0x3F
     const rgb = PPU.PALETTE[paletteIndex]
-    return 0xFF000000 | rgb
+    // Конвертируем 0xRRGGBB в little-endian 0xAABBGGRR
+    return 0xFF000000 | ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb & 0xFF0000) >> 16)
   }
 
   // Get screen buffer
@@ -440,12 +425,27 @@ export class PPU {
     this.nmiOutput = false
     this.nmiPending = false
     this.vram.fill(0)
-    // Инициализируем палитру значениями по умолчанию (серый фон)
-    this.palette.fill(0x0F) // Светло-серый цвет
+    
+    // Инициализируем палитру значениями по умолчанию
+    // Background palette (индексы 0x00-0x0F)
+    this.palette[0x00] = 0x00 // Чёрный (transparent)
+    this.palette[0x01] = 0x0F // Белый
+    this.palette[0x02] = 0x2A // Светло-серый
+    this.palette[0x03] = 0x15 // Тёмно-серый
+    // Sprite palette (индексы 0x10-0x1F)
+    this.palette[0x10] = 0x00 // Чёрный (transparent)
+    this.palette[0x11] = 0x30 // Красный
+    this.palette[0x12] = 0x20 // Зелёный
+    this.palette[0x13] = 0x10 // Синий
+    
     this.spriteMemory.fill(0)
     // Заполняем экран цветом фона из палитры (индекс 0)
     const bgColor = this.getPaletteColor(0)
     this.screenBuffer.fill(bgColor)
+  }
+
+  getScanline(): number {
+    return this.scanline
   }
 
   // State

@@ -11,6 +11,8 @@ export class Memory {
   private ram: Uint8Array
   private ppuRegisters: Uint8Array
   private apuRegisters: Uint8Array
+  private readCount = 0
+  private writeCount = 0 // For debug logging
 
   // Callbacks for hardware access
   private onPPURead?: (addr: number) => number
@@ -58,12 +60,12 @@ export class Memory {
   read(addr: number): number {
     addr &= 0xFFFF
 
-    // Mirror RAM
+    // Mirror RAM (0x0000-0x1FFF)
     if (addr < 0x2000) {
       return this.ram[addr & 0x07FF]
     }
 
-    // PPU registers (mirrored every 8 bytes)
+    // PPU registers (0x2000-0x3FFF, mirrored every 8 bytes)
     if (addr >= 0x2000 && addr < 0x4000) {
       const reg = (addr - 0x2000) & 0x07
       if (this.onPPURead) {
@@ -72,7 +74,7 @@ export class Memory {
       return this.ppuRegisters[reg]
     }
 
-    // APU and I/O
+    // APU and I/O (0x4000-0x401F)
     if (addr >= 0x4000 && addr < 0x4020) {
       const reg = addr - 0x4000
       if (this.onAPURead) {
@@ -81,7 +83,7 @@ export class Memory {
       return this.apuRegisters[reg]
     }
 
-    // Cartridge
+    // Cartridge (0x4020-0xFFFF)
     if (addr >= 0x4020) {
       if (this.onCartridgeRead) {
         return this.onCartridgeRead(addr)
@@ -102,9 +104,13 @@ export class Memory {
       return
     }
 
-    // PPU registers
+    // PPU registers (debug logging)
     if (addr >= 0x2000 && addr < 0x4000) {
       const reg = (addr - 0x2000) & 0x07
+      if (this.writeCount < 50) {
+        console.log(`PPU WRITE[${this.writeCount}] addr=${addr.toString(16).toUpperCase()} reg=${reg} val=${value.toString(16).padStart(2, '0')}`)
+        this.writeCount++
+      }
       if (this.onPPUWrite) {
         this.onPPUWrite(reg, value)
         return

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { NES } from '@/core'
 import { Button } from '@/components/ui/button'
 import { Upload } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface RomLoaderProps {
   onROMLoaded: (nes: NES, romName: string) => void
@@ -19,17 +20,11 @@ export function RomLoader({ onROMLoaded }: RomLoaderProps) {
     setError(null)
 
     try {
-      console.log('Loading ROM:', file.name, file.size, 'bytes')
       const arrayBuffer = await file.arrayBuffer()
       const romData = new Uint8Array(arrayBuffer)
-      console.log('ROM data loaded:', romData.length, 'bytes')
-      console.log('ROM header:', Array.from(romData.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '))
 
       const nes = new NES()
-      console.log('NES instance created')
-
       const rom = nes.loadROM(romData)
-      console.log('ROM loaded:', rom.title, 'Mapper:', rom.mapperId, 'PRG size:', rom.prgROM.length, 'CHR size:', rom.chrROM.length)
 
       onROMLoaded(nes, rom.title)
     } catch (err) {

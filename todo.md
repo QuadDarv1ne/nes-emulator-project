@@ -1,29 +1,32 @@
 # 📋 Tasks — NES Emulator Project
 
 **Последнее обновление:** 26 марта 2026 г.
-**Ветка:** `dev` → `main`
+**Ветка:** `main` (ожидают коммита изменения в `dev`)
 
 ---
 
-## 🔥 Активные изменения (dev)
+## 🔥 Активные изменения (dev → main)
 
-### Изменения в работе
-- ✅ `next.config.ts` — включён `reactStrictMode: true`, отключён `ignoreBuildErrors: false`
-- ✅ `src/components/emulator/index.tsx` — добавлены toast-уведомления (sonner) для загрузки ROM, сохранения/загрузки состояний
-- ✅ `src/components/emulator/screen.tsx` — оптимизация рендеринга canvas, вынесение ctx в ref, улучшена обработка ошибок
-- ✅ `src/app/page.tsx` — исправлена ошибка гидратации (particles генерируются на клиенте)
+### ✅ Выполненные изменения (ожидают коммита)
+- ✅ `src/core/cartridge.ts` — добавлена поддержка mapper 4 (MMC3), mapper 1 (MMC1), mapper 2 (UxROM), mapper 3 (CNROM)
+- ✅ `src/core/cartridge.ts` — реализованы методы `write()`, `readPRGInternal()`, `initializeMapperState()`
+- ✅ `src/core/cpu.ts` — изменения в CPU memory interface
+- ✅ `src/core/memory.ts` — обновления memory handlers
 - ✅ `src/core/ppu.ts` — добавлена поддержка CHR ROM для рендеринга background и sprites
 - ✅ `src/core/nes.ts` — улучшена поддержка mapper 0 (NROM), установка CHR ROM в PPU
+- ✅ `src/components/emulator/screen.tsx` — оптимизация рендеринга canvas, вынесение ctx в ref
 - ✅ `src/components/emulator/rom-loader.tsx` — улучшено логирование загрузки ROM
+- ✅ `src/__tests__/core/controller.test.ts` — обновления тестов контроллера
 
-### Требуется проверка
+### ⏳ Требуется проверка и коммит
 - [ ] Запустить `bun run build` — убедиться, что сборка проходит без ошибок
 - [ ] Запустить `bun run lint` — проверить ESLint
 - [ ] Запустить `bun run test:run` — проверить тесты
+- [ ] **Закоммитить изменения** → `dev` ветка
+- [ ] **Сделать merge** `dev` → `main`
 - [ ] Протестировать загрузку ROM в dev-режиме (Super Mario Bros, Contra)
 - [ ] Проверить работу save/load состояний
-- [ ] Проверить работу toast-уведомлений
-- [ ] **Проверить рендеринг графики** (фон, спрайты)
+- [ ] **Проверить рендеринг графики** (фон, спрайты) — критично!
 
 ---
 
@@ -35,12 +38,15 @@
 - [ ] Обработать случай несовместимых mapper'ов
 - [x] Исправлена ошибка гидратации Next.js
 - [x] Добавлена поддержка CHR ROM в PPU
+- [ ] **Реализована поддержка mapper'ов:** MMC3 (4), MMC1 (1), UxROM (2), CNROM (3)
+- [ ] **Требуется:** закоммитить изменения и протестировать
 
 ### Тесты (приоритет: высокий)
 - [ ] Добавить тесты для `ppu.ts`
 - [ ] Добавить тесты для `apu.ts`
 - [ ] Добавить тесты для `memory.ts`
 - [ ] Интеграционные тесты для `nes.ts`
+- [ ] Тесты для mapper'ов (MMC3, MMC1)
 
 ---
 
@@ -48,9 +54,10 @@
 
 ### Эмуляция (ядро)
 - [ ] Реализовать полный цикл CPU (opcode-by-opcode)
-- [ ] Завершить реализацию PPU (рендеринг спрайтов, background) ✅ CHR ROM поддержка
+- [x] Завершить реализацию PPU (рендеринг спрайтов, background) ✅ CHR ROM поддержка
+- [x] Поддержка mapper'ов: MMC3 (4), MMC1 (1), UxROM (2), CNROM (3) — **ожидают коммита**
 - [ ] Реализовать APU (звуковые каналы: pulse, triangle, noise, DMC)
-- [ ] Поддержка mapper'ов (MMC1, MMC3, UxROM, CNROM)
+- [ ] Поддержка популярных mapper'ов (MMC1, MMC3) — **в реализации**
 
 ### UI/UX
 - [ ] Экран загрузки с прогресс-баром
@@ -133,10 +140,29 @@
 | APU | 🔴 Не готово | ❌ | ❌ |
 | Memory | 🟡 Частично | ❌ | ❌ |
 | Controller | ✅ Готово | ✅ 8 тестов | ❌ |
-| Cartridge | 🟡 Частично | ✅ 20 тестов | ❌ |
+| Cartridge | 🟢 Mapper 0,1,2,3,4 | ✅ 20 тестов | ❌ |
 | NES Core | 🟢 Mapper 0 готов | ❌ | ❌ |
 
 **Легенда:** 🟢 Готово | 🟡 В работе | 🔴 Не начато
+
+---
+
+## 📝 Примечания к коммиту
+
+**Изменения для коммита:**
+- `src/core/cartridge.ts` — поддержка MMC3, MMC1, UxROM, CNROM
+- `src/core/cpu.ts` — исправления memory interface
+- `src/core/memory.ts` — обновления handlers
+- `src/core/ppu.ts` — CHR ROM поддержка
+- `src/core/nes.ts` — mapper 0 поддержка
+- `src/components/emulator/screen.tsx` — оптимизация canvas
+- `src/components/emulator/rom-loader.tsx` — логирование
+- `src/__tests__/core/controller.test.ts` — тесты
+
+**Следующие шаги:**
+1. Закоммитить → dev
+2. Протестировать в dev
+3. Merge dev → main
 
 ---
 

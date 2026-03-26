@@ -69,19 +69,6 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
     }
 
     ctx.putImageData(imageData, 0, 0)
-    
-    // Отладка: выводим информацию каждые 60 кадров
-    if (Math.random() < 0.01) {
-      const logMsg = `Rendered: ${nonZeroPixels}/${256*240} non-zero pixels, sample: ${buffer[0].toString(16)}`
-      console.log(logMsg)
-      if (typeof window !== 'undefined') {
-        fetch('/api/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: logMsg, level: 'info' })
-        }).catch(() => {})
-      }
-    }
   }, [])
 
   useEffect(() => {
