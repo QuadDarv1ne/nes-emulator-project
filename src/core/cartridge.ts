@@ -426,10 +426,20 @@ export class Cartridge {
 
     if (this.rom.mapperId === 0) {
       // Mapper 0 (NROM): simple mapping
+      // PRG ROM mapped to 0x8000-0xFFFF
+      // 16KB: 0x8000-0xBFFF (mirrored to 0xC000-0xFFFF)
+      // 32KB: 0x8000-0xFFFF (full range)
+      if (addr < 0x8000) {
+        // Mirror for addresses below 0x8000
+        return this.readPRG(addr + 0x8000)
+      }
+      const offset = addr - 0x8000
       if (this.rom.prgROM.length === 16384) {
-        return this.rom.prgROM[addr & 0x3FFF]
+        // 16KB: mirror to fit
+        return this.rom.prgROM[offset & 0x3FFF]
       } else {
-        return this.rom.prgROM[addr - 0x8000]
+        // 32KB: direct mapping
+        return this.rom.prgROM[offset & 0x7FFF]
       }
     } else if (this.rom.mapperId === 1) {
       // Mapper 1 (MMC1): 16KB PRG bank

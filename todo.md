@@ -27,9 +27,10 @@
 - ✅ `dev` → origin/dev (10efd92)
 
 ### ⏳ Требуется проверка
-- [ ] Протестировать загрузку ROM (Super Mario Bros, Contra)
+- [x] Протестировать загрузку ROM (Super Mario Bros) — ROM скопирован в test-roms/
 - [ ] Проверить работу save/load состояний
 - [ ] Исправить ошибку сборки (_global-error) — не критично
+- [ ] **Запустить dev-сервер** и проверить рендеринг Super Mario Bros
 
 ---
 

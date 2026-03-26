@@ -156,16 +156,17 @@ export class NES {
     this.frameCount = 0
 
     // Debug: проверяем reset vector и первые байты кода
-    const resetLow = this.memory.read(0xFFFC)
-    const resetHigh = this.memory.read(0xFFFD)
+    // Читаем reset vector из PRG ROM (адреса 0xFFFC-0xFFFF в CPU memory map)
+    const resetLow = this.cartridge.readPRG(0xFFFC)
+    const resetHigh = this.cartridge.readPRG(0xFFFD)
     const resetAddr = (resetLow | (resetHigh << 8)) & 0xFFFF
-    
+
     // Читаем первые 8 байт кода по адресу reset
     const codeBytes: number[] = []
     for (let i = 0; i < 8; i++) {
-      codeBytes.push(this.cartridge.readPRG(resetAddr + i))
+      codeBytes.push(this.cartridge.readPRG((resetAddr + i) & 0x7FFF))
     }
-    
+
     console.log(`Mapper ${rom.mapperId}: Reset=${resetAddr.toString(16).toUpperCase()}, Code=${codeBytes.map(b => b.toString(16).padStart(2, '0')).join(' ')}`)
     console.log(`PRG: ${rom.prgROM.length}, CHR: ${rom.chrROM.length}, Banks: ${rom.prgROM.length / 8192}`)
     console.log(`Battery: ${rom.battery}, Mirror: ${rom.mirrorMode}, PRG RAM: ${rom.prgRAM ? 'yes' : 'no'}`)
@@ -282,6 +283,31 @@ export class NES {
       fps: this.frameCount,
       frameCount: this.frameCount,
     }
+  }
+
+  // Get CPU state (for tests)
+  getCPUState() {
+    return this.cpu.getState()
+  }
+
+  // Get frame count (for tests)
+  getFrameCount() {
+    return this.frameCount
+  }
+
+  // Step CPU (for tests)
+  cpuStep() {
+    return this.cpu.step()
+  }
+
+  // Step PPU (for tests)
+  ppuStep() {
+    return this.ppu.step()
+  }
+
+  // Render scanline (for tests)
+  renderScanline() {
+    this.ppu.renderScanline()
   }
 
   // Save state
