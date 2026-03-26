@@ -6,7 +6,8 @@ import { EmulatorScreen } from './screen'
 import { EmulatorControls } from './controls'
 import { RomLoader } from './rom-loader'
 import { ROMHistoryList } from '../rom-history-list'
-import { addROMToHistory } from '@/lib/rom-history'
+import { KeyBindingsDialog } from '../key-bindings-dialog'
+import { addROMToHistory, getKeyBindings } from '@/lib/rom-history'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Gamepad2, Play, Pause, RotateCcw, Download, Upload } from 'lucide-react'
@@ -394,25 +395,7 @@ export function Emulator() {
                   <Upload className="h-4 w-4" />
                 </Button>
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleLoadAutoSave}
-                  title="Загрузить автосохранение"
-                  className="h-10 w-10"
-                >
-                  <span className="text-xs font-bold">A</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleClearAutoSave}
-                  title="Очистить автосохранение"
-                  className="h-10 w-10"
-                >
-                  <span className="text-xs font-bold">✕</span>
-                </Button>
+                <KeyBindingsDialog />
               </div>
 
               {/* Info */}
