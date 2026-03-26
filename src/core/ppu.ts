@@ -173,17 +173,20 @@ export class PPU {
     return result
   }
 
+  // OAM address (separate from PPU address)
+  private oamAddr: number = 0
+
   writeOAMAddr(value: number) {
-    this.address = value
+    this.oamAddr = value
   }
 
   writeOAMData(value: number) {
-    this.spriteMemory[this.address] = value
-    this.address = (this.address + 1) & 0xFF
+    this.spriteMemory[this.oamAddr] = value
+    this.oamAddr = (this.oamAddr + 1) & 0xFF
   }
 
   readOAMData(): number {
-    return this.spriteMemory[this.address]
+    return this.spriteMemory[this.oamAddr]
   }
 
   // Sprite DMA - transfer 256 bytes from CPU memory to OAM
@@ -458,6 +461,7 @@ export class PPU {
       scrollY: this.scrollY,
       address: this.address,
       dataBuffer: this.dataBuffer,
+      oamAddr: this.oamAddr,
       scanline: this.scanline,
       cycle: this.cycle,
       frameComplete: this.frameComplete,
@@ -479,15 +483,16 @@ export class PPU {
     this.scrollY = state.scrollY
     this.address = state.address
     this.dataBuffer = state.dataBuffer
+    this.oamAddr = state.oamAddr
     this.scanline = state.scanline
     this.cycle = state.cycle
     this.frameComplete = state.frameComplete
     this.nmiOccurred = state.nmiOccurred
     this.nmiOutput = state.nmiOutput
     this.nmiPending = state.nmiPending
-    this.vram.set(state.vram)
-    this.palette.set(state.palette)
-    this.spriteMemory.set(state.spriteMemory)
+    if (state.vram) this.vram.set(state.vram)
+    if (state.palette) this.palette.set(state.palette)
+    if (state.spriteMemory) this.spriteMemory.set(state.spriteMemory)
     this.screenBuffer.set(state.screenBuffer)
   }
 }
