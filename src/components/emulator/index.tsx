@@ -7,6 +7,7 @@ import { EmulatorControls } from './controls'
 import { RomLoader } from './rom-loader'
 import { ROMHistoryList } from '../rom-history-list'
 import { KeyBindingsDialog } from '../key-bindings-dialog'
+import { TouchControls } from '../touch-controls'
 import { addROMToHistory, getKeyBindings } from '@/lib/rom-history'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -456,6 +457,9 @@ export function Emulator() {
           </Card>
         </>
       )}
+
+      {/* Touch Controls for Mobile */}
+      <TouchControls nes={nes} />
     </div>
   )
 }
