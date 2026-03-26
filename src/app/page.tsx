@@ -5,6 +5,7 @@ import { LocaleSwitcher } from '@/lib/i18n/locale-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Emulator } from '@/components/emulator'
 import { Footer } from '@/components/footer'
+import { DebugOverlay } from '@/components/debug-overlay'
 import { Gamepad2, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
@@ -108,6 +109,9 @@ export default function Home() {
           <Emulator />
         </motion.div>
       </main>
+
+      {/* Debug Overlay */}
+      <DebugOverlay />
 
       {/* Footer */}
       <Footer />

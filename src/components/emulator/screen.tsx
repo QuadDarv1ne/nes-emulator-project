@@ -41,7 +41,10 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
     if (!currentNes || !ctx) return
 
     const buffer = currentNes.getScreenBuffer()
-    if (!buffer || buffer.length !== 256 * 240) return
+    if (!buffer || buffer.length !== 256 * 240) {
+      console.log('Render skipped:', buffer?.length, 'expected:', 256 * 240)
+      return
+    }
 
     // Создаем ImageData только один раз для производительности
     if (!imageDataRef.current) {
@@ -50,6 +53,9 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
     const imageData = imageDataRef.current
     const data = imageData.data
 
+    // Подсчитываем ненулевые пиксели для отладки
+    let nonZeroPixels = 0
+    
     // Оптимизированное копирование пикселей
     for (let i = 0; i < buffer.length; i++) {
       const pixel = buffer[i]
@@ -58,9 +64,24 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
       data[idx + 1] = (pixel >> 8) & 0xFF  // G
       data[idx + 2] = pixel & 0xFF         // B
       data[idx + 3] = (pixel >> 24) & 0xFF // A
+      
+      if ((pixel & 0xFFFFFF) !== 0) nonZeroPixels++
     }
 
     ctx.putImageData(imageData, 0, 0)
+    
+    // Отладка: выводим информацию каждые 60 кадров
+    if (Math.random() < 0.01) {
+      const logMsg = `Rendered: ${nonZeroPixels}/${256*240} non-zero pixels, sample: ${buffer[0].toString(16)}`
+      console.log(logMsg)
+      if (typeof window !== 'undefined') {
+        fetch('/api/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: logMsg, level: 'info' })
+        }).catch(() => {})
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -97,8 +118,11 @@ export function EmulatorScreen({ nes, width = 256, height = 240, className }: Em
         ref={canvasRef}
         width={256}
         height={240}
-        className="w-full max-w-2xl aspect-[256/240] bg-black rounded-lg shadow-2xl"
-        style={{ imageRendering: 'pixelated' }}
+        className="w-full max-w-4xl mx-auto bg-black rounded-lg shadow-2xl"
+        style={{ 
+          imageRendering: 'pixelated',
+          aspectRatio: '256/240'
+        }}
       />
       {!isReady && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg backdrop-blur-sm">

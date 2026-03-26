@@ -93,7 +93,21 @@ export class PPU {
   }
 
   writeMask(value: number) {
+    const oldMask = this.mask
     this.mask = value
+    
+    // Debug: логирование включения display
+    if ((value & 0x18) !== 0 && (oldMask & 0x18) === 0) {
+      const logMsg = `PPU mask: ${value.toString(16)} bg:${!!(value & 0x08)} sprites:${!!(value & 0x10)}`
+      console.log(logMsg)
+      if (typeof window !== 'undefined') {
+        fetch('/api/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: logMsg, level: 'info' })
+        }).catch(() => {})
+      }
+    }
   }
 
   readStatus(): number {
@@ -129,6 +143,21 @@ export class PPU {
     } else if (addr >= 0x2000 && addr < 0x3F00) {
       // Name tables (with mirroring)
       this.vram[0x1000 + (addr & 0x0FFF)] = value
+      
+      // Debug: логирование первых записей в name table
+      if (this.frameCount < 3 && addr >= 0x2000 && addr < 0x23C0) {
+        if (Math.random() < 0.001) {
+          const logMsg = `PPU write name table: $${addr.toString(16)} = $${value.toString(16)}`
+          console.log(logMsg)
+          if (typeof window !== 'undefined') {
+            fetch('/api/log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: logMsg, level: 'info' })
+            }).catch(() => {})
+          }
+        }
+      }
     } else if (addr >= 0x3F00 && addr < 0x4000) {
       // Palette RAM (with mirrors)
       const paletteAddr = addr & 0x1F
@@ -137,6 +166,19 @@ export class PPU {
         this.palette[paletteAddr & 0x0F] = value & 0x3F
       } else {
         this.palette[paletteAddr] = value & 0x3F
+      }
+      
+      // Debug: логирование записи в палитру
+      if (this.frameCount < 3 && Math.random() < 0.01) {
+        const logMsg = `PPU write palette: $${paletteAddr.toString(16)} = $${(value & 0x3F).toString(16)}`
+        console.log(logMsg)
+        if (typeof window !== 'undefined') {
+          fetch('/api/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: logMsg, level: 'info' })
+          }).catch(() => {})
+        }
       }
     }
     this.address = (this.address + 1) & 0x3FFF
@@ -261,6 +303,11 @@ export class PPU {
       if (this.mask & 0x10) { // Sprites enabled
         this.renderSprites(baseAddr, y)
       }
+    }
+    
+    // Отладка: выводим информацию о рендеринге каждые 60 кадров
+    if (this.scanline === 240 && this.frameCount % 60 === 0) {
+      console.log('PPU frame:', this.frameCount, 'mask:', this.mask.toString(16), 'bgColor:', this.getPaletteColor(0).toString(16))
     }
   }
 

@@ -55,6 +55,14 @@ export class NES {
     this.controller1 = new Controller()
     this.controller2 = new Controller()
 
+    // Устанавливаем memory interface в CPU для доступа к cartridge
+    this.cpu.setMemoryInterface({
+      read: (addr) => this.memory.read(addr),
+      write: (addr, value) => this.memory.write(addr, value),
+      read16: (addr) => this.memory.read16(addr),
+      write16: (addr, value) => this.memory.write16(addr, value),
+    })
+
     this.setupMemoryHandlers()
   }
 
@@ -69,6 +77,19 @@ export class NES {
         }
       },
       (addr, value) => {
+        // Debug: логирование записей в PPU
+        if (addr === 0x06 || addr === 0x07) {
+          const logMsg = `CPU write PPU[$${addr.toString(16)}] = $${value.toString(16)}`
+          console.log(logMsg)
+          if (typeof window !== 'undefined' && Math.random() < 0.01) {
+            fetch('/api/log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: logMsg, level: 'info' })
+            }).catch(() => {})
+          }
+        }
+        
         switch (addr) {
           case 0x00: this.ppu.writeCtrl(value); break
           case 0x01: this.ppu.writeMask(value); break
@@ -114,15 +135,18 @@ export class NES {
         if (!rom) return 0
 
         // PRG ROM mapping - support mapper 0 (NROM) and simple mappers
+        // PRG ROM is mapped to 0x8000-0xFFFF
         if (addr >= 0x8000 && addr <= 0xFFFF) {
           const prgSize = rom.prgROM.length
-          // For 16KB PRG ROM, mirror to both banks
+          // For 16KB PRG ROM, mirror to both banks (0x8000-0xBFFF and 0xC000-0xFFFF)
           if (prgSize === 0x4000) {
             return rom.prgROM[addr & 0x3FFF]
           }
-          // For 32KB PRG ROM, use full address space
+          // For 32KB+ PRG ROM, use full address space
           return rom.prgROM[addr - 0x8000]
         }
+        
+        // Return 0 for unmapped cartridge space (0x4020-0x7FFF)
         return 0
       },
       (addr, value) => {
@@ -131,6 +155,7 @@ export class NES {
         if (!rom || rom.mapperId !== 0) return
         
         // Mapper 0 (NROM) doesn't have bank switching
+        // No write handling needed
       }
     )
 
@@ -152,6 +177,31 @@ export class NES {
     this.apu.reset()
     this.memory.reset()
     this.frameCount = 0
+    
+    // Debug: проверяем reset vector
+    const resetLow = this.memory.read(0xFFFC)
+    const resetHigh = this.memory.read(0xFFFD)
+    const resetAddr = (resetLow | (resetHigh << 8)) & 0xFFFF
+    const logMsg = `Reset vector: ${resetAddr.toString(16)} (${resetLow.toString(16)} ${resetHigh.toString(16)}) | PRG ROM[0]: ${rom.prgROM[0].toString(16)} | PC: ${this.cpu.getState().pc.toString(16)}`
+    
+    // Отправляем лог на сервер
+    if (typeof window !== 'undefined') {
+      fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: logMsg, level: 'info' })
+      }).catch(() => {})
+      
+      fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `ROM: ${rom.title}, Mapper: ${rom.mapperId}, PRG: ${rom.prgROM.length}, CHR: ${rom.chrROM.length}`, level: 'info' })
+      }).catch(() => {})
+    }
+    
+    console.log(logMsg)
+    console.log('ROM loaded:', rom.title, 'Mapper:', rom.mapperId, 'PRG:', rom.prgROM.length, 'CHR:', rom.chrROM.length)
+    
     return rom
   }
 
@@ -177,6 +227,9 @@ export class NES {
     this.apu.reset()
     this.memory.reset()
     this.frameCount = 0
+    
+    // Debug после reset
+    console.log('CPU PC after reset:', this.cpu.getState().pc.toString(16))
   }
 
   private run() {

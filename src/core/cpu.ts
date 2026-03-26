@@ -72,6 +72,15 @@ export class CPU {
 
   // Cycle tracking
   private extraCycles = 0
+  private stepCount = 0
+
+  // Memory interface - делегирование в Memory класс
+  private memoryInterface?: {
+    read: (addr: number) => number
+    write: (addr: number, value: number) => void
+    read16: (addr: number) => number
+    write16: (addr: number, value: number) => void
+  }
 
   // Callbacks
   private onNMI?: () => void
@@ -119,6 +128,16 @@ export class CPU {
     this.onDMA = handler
   }
 
+  // Установка Memory интерфейса
+  setMemoryInterface(memory: {
+    read: (addr: number) => number
+    write: (addr: number, value: number) => void
+    read16: (addr: number) => number
+    write16: (addr: number, value: number) => void
+  }) {
+    this.memoryInterface = memory
+  }
+
   triggerNMI() {
     this.nmiPending = true
   }
@@ -144,12 +163,22 @@ export class CPU {
     this.pc = this.read16(0xFFFC) // Reset vector
     this.nmiPending = false
     this.irqPending = false
+    this.stepCount = 0
   }
 
-  // Memory operations with proper mirroring
+  // Memory operations - делегирование в Memory интерфейс
   read(addr: number): number {
     addr &= 0xFFFF
-    // RAM mirrors every 2KB
+    // Если есть memory interface, используем его
+    if (this.memoryInterface) {
+      const value = this.memoryInterface.read(addr)
+      // Debug: логирование чтений из cartridge
+      if (addr >= 0x8000 && this.stepCount < 20) {
+        console.log(`CPU read[$${addr.toString(16)}] = $${value.toString(16)}`)
+      }
+      return value
+    }
+    // Fallback к внутренней памяти (для совместимости)
     if (addr < 0x2000) {
       return this.memory[addr & 0x07FF]
     }
@@ -158,7 +187,12 @@ export class CPU {
 
   write(addr: number, value: number) {
     addr &= 0xFFFF
-    // RAM mirrors every 2KB
+    // Если есть memory interface, используем его
+    if (this.memoryInterface) {
+      this.memoryInterface.write(addr, value)
+      return
+    }
+    // Fallback к внутренней памяти (для совместимости)
     if (addr < 0x2000) {
       this.memory[addr & 0x07FF] = value & 0xFF
       return
@@ -167,10 +201,19 @@ export class CPU {
   }
 
   read16(addr: number): number {
+    // Если есть memory interface, используем его
+    if (this.memoryInterface) {
+      return this.memoryInterface.read16(addr)
+    }
     return this.read(addr) | (this.read(addr + 1) << 8)
   }
 
   write16(addr: number, value: number) {
+    // Если есть memory interface, используем его
+    if (this.memoryInterface) {
+      this.memoryInterface.write16(addr, value)
+      return
+    }
     this.write(addr, value & 0xFF)
     this.write(addr + 1, (value >> 8) & 0xFF)
   }
@@ -1124,6 +1167,12 @@ export class CPU {
       return 2
     }
 
+    // Debug: логирование первых инструкций
+    if (this.stepCount < 10) {
+      console.log(`CPU [${(this.pc - 1).toString(16).padStart(4, '0')}] ${instruction.mnemonic} opcode:0x${opcode.toString(16).padStart(2, '0')} A:${this.a.toString(16).padStart(2, '0')} X:${this.x.toString(16).padStart(2, '0')} Y:${this.y.toString(16).padStart(2, '0')}`)
+      this.stepCount++
+    }
+
     instruction.execute(this)
     return instruction.cycles + this.extraCycles
   }
@@ -1150,6 +1199,8 @@ export class CPU {
     return executedCycles
   }
 
+  // Get internal memory for DMA - возвращаем RAM (0x0000-0x07FF)
+  // Для DMA нам нужен доступ к CPU memory где хранятся sprite data
   getMemory(): Uint8Array {
     return this.memory
   }
