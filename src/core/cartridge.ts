@@ -73,8 +73,29 @@ export class Cartridge {
       throw new Error('Invalid iNES ROM format')
     }
 
+    // Проверка минимального размера ROM (минимум 16 байт заголовка)
+    if (data.length < 16) {
+      throw new Error('ROM file too small (minimum 16 bytes required)')
+    }
+
     const prgROMSize = data[4] * 16384 // 16KB units
     const chrROMSize = data[5] * 8192  // 8KB units
+
+    // Проверка размера PRG ROM (минимум 16KB, максимум 4MB)
+    if (prgROMSize < 16384 || prgROMSize > 4194304) {
+      throw new Error(`Invalid PRG ROM size: ${prgROMSize} bytes (must be 16KB - 4MB)`)
+    }
+
+    // Проверка размера CHR ROM (максимум 2MB, 0 допустимо для CHR RAM)
+    if (chrROMSize > 2097152) {
+      throw new Error(`Invalid CHR ROM size: ${chrROMSize} bytes (maximum 2MB)`)
+    }
+
+    // Проверка общего размера файла
+    const expectedSize = 16 + prgROMSize + chrROMSize + (data[6] & 0x04 ? 512 : 0)
+    if (data.length < expectedSize - 1024) { // Допускаем 1KB погрешность
+      throw new Error(`ROM file truncated: expected ${expectedSize} bytes, got ${data.length}`)
+    }
 
     const flags6 = data[6]
     const flags7 = data[7]
@@ -133,6 +154,12 @@ export class Cartridge {
 
     // Определяем final mirror mode
     const finalMirrorMode = fourScreen ? MirrorMode.FourScreen : mirrorMode
+
+    // Проверка на поддерживаемые mapper'ы
+    const supportedMappers = [0, 1, 2, 3, 4];
+    if (!supportedMappers.includes(mapperId)) {
+      throw new Error(`Unsupported mapper: ${mapperId}. Supported mappers: ${supportedMappers.join(', ')}`)
+    }
 
     // Извлекаем название из ROM (если есть)
     const titleBytes = data.slice(0, 16).filter(b => b !== 0)
