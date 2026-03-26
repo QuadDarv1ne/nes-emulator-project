@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { NES } from '@/core'
+import { LoadingScreen } from '../loading-screen'
 import { Button } from '@/components/ui/button'
 import { Upload } from 'lucide-react'
 import { toast } from 'sonner'
@@ -12,28 +13,56 @@ interface RomLoaderProps {
 
 export function RomLoader({ onROMLoaded }: RomLoaderProps) {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [loadingMessage, setLoadingMessage] = useState('')
+  const error = useState<string | null>(null)[0]
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadROM = useCallback(async (file: File) => {
     setLoading(true)
-    setError(null)
+    setProgress(0)
+    setLoadingMessage('Чтение файла...')
 
     try {
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return prev
+          }
+          return prev + 10
+        })
+      }, 100)
+
       const arrayBuffer = await file.arrayBuffer()
+      setProgress(50)
+      setLoadingMessage('Обработка ROM...')
+      
       const romData = new Uint8Array(arrayBuffer)
 
       const nes = new NES()
+      setLoadingMessage('Инициализация эмулятора...')
+      
       const rom = nes.loadROM(romData)
 
+      clearInterval(progressInterval)
+      setProgress(100)
+      setLoadingMessage('Запуск...')
+
+      // Small delay to show 100%
+      await new Promise(resolve => setTimeout(resolve, 300))
+
       onROMLoaded(nes, rom.title)
+      setLoading(false)
+      setProgress(0)
+      toast.success(`ROM загружен: ${rom.title}`)
     } catch (err) {
       console.error('ROM load error:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to load ROM'
-      setError(errorMessage)
       toast.error(errorMessage)
-    } finally {
       setLoading(false)
+      setProgress(0)
     }
   }, [onROMLoaded])
 
@@ -62,14 +91,19 @@ export function RomLoader({ onROMLoaded }: RomLoaderProps) {
 
   return (
     <div className="w-full max-w-md">
+      {loading && (
+        <LoadingScreen progress={progress} message={loadingMessage} />
+      )}
+
       <input
         ref={fileInputRef}
         type="file"
         accept=".nes"
         onChange={handleFileChange}
         className="hidden"
+        disabled={loading}
       />
-      
+
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -77,7 +111,7 @@ export function RomLoader({ onROMLoaded }: RomLoaderProps) {
         onClick={handleClick}
       >
         <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-        
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Загрузка...</p>
         ) : error ? (

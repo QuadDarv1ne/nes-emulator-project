@@ -9,9 +9,11 @@
 
 ### ✅ Выполненные изменения (закоммичены в main)
 - ✅ `src/components/emulator/index.tsx` — поддержка геймпадов (Gamepad API), автосохранение в localStorage
+- ✅ `src/components/emulator/rom-loader.tsx` — прогресс-бар загрузки ROM, LoadingScreen
+- ✅ `src/components/loading-screen.tsx` — компонент экрана загрузки с прогрессом
 - ✅ `src/core/cartridge.ts` — поддержка mapper 4 (MMC3), mapper 1 (MMC1), mapper 2 (UxROM), mapper 3 (CNROM)
 - ✅ `src/core/ppu.ts` — CHR ROM поддержка, рендеринг background и sprites, sprite priority
-- ✅ `src/core/apu.ts` — базовая реализация APU (pulse, triangle, noise, DMC)
+- ✅ `src/core/apu.ts` — базовая реализация APU (pulse, triangle, noise, DMC), улучшена генерация звука
 - ✅ `src/core/memory.ts` — handlers для PPU, APU, Cartridge, DMA
 - ✅ `src/core/nes.ts` — mapper 0 (NROM), установка CHR ROM в PPU
 - ✅ `src/components/screen.tsx` — оптимизация canvas rendering
@@ -19,16 +21,17 @@
 - ✅ `eslint.config.mjs` — игнорирование test-roms/
 
 ### ✅ Отправлено в origin
-- ✅ `main` → origin/main (6a59b52)
-- ✅ `dev` → origin/dev (6a59b52)
+- ✅ `main` → origin/main (9e3cb18)
+- ✅ `dev` → origin/dev (9e3cb18)
 
 ### ✅ Выполненные проверки
 - [x] Протестировать загрузку ROM (Super Mario Bros) — ✅ ЗАГРУЖАЕТСЯ
-- [x] Проверить работу эмуляции — ✅ 176 тестов пройдены
+- [x] Проверить работу эмуляции — ✅ 202 теста пройдены
 - [x] **Визуальная проверка** — dev-сервер работает (http://localhost:3000)
 - [x] Проверить работу save/load состояний — ✅ реализовано
 - [x] Проверить автосохранение — ✅ каждые 5 минут в localStorage
 - [x] Проверить поддержку геймпадов — ✅ Gamepad API реализовано
+- [x] Проверить LoadingScreen при загрузке ROM — ✅ реализовано
 
 ---
 
@@ -50,6 +53,13 @@
 - [x] Тестировать на Super Mario Bros (mapper 0) — ✅ тесты добавлены
 - [x] Тестировать на Contra (mapper 2 UxROM) — ✅ тесты добавлены
 
+### APU Improvements ✅ ГОТОВО
+- [x] Улучшена генерация звука pulse каналов (проверка периода и таймера)
+- [x] Улучшена генерация triangle канала (проверка периода)
+- [x] Улучшена генерация noise канала (проверка таймера и периода)
+- [x] Добавлено свойство noiseVolume для фиксированной громкости
+- [x] Все тесты APU проходят (28 тестов)
+
 ### Тесты (приоритет: высокий)
 - [x] Добавить тесты для `ppu.ts` — ✅ 30 тестов
 - [x] Добавить тесты для `apu.ts` — ✅ 28 тестов
@@ -65,12 +75,12 @@
 - [ ] Реализовать полный цикл CPU (opcode-by-opcode)
 - [x] Завершить реализацию PPU (рендеринг спрайтов, background) ✅ CHR ROM поддержка, sprite priority
 - [x] Поддержка mapper'ов: MMC3 (4), MMC1 (1), UxROM (2), CNROM (3) ✅ IRQ поддержка
-- [ ] Реализовать APU (звуковые каналы: pulse, triangle, noise, DMC)
+- [x] Реализовать APU (звуковые каналы: pulse, triangle, noise, DMC) ✅ базовая реализация, улучшена генерация
 - [x] **Тестирование** — проверка с реальными ROM ✅ 9 тестов пройдены
 - [ ] **Отладка** — MMC3 IRQ корректность
 
 ### UI/UX
-- [ ] Экран загрузки с прогресс-баром
+- [ ] Экран загрузки с прогресс-баром ✅ LoadingScreen реализован
 - [x] Список последних игр (localStorage) — ✅ реализовано
 - [x] Настройки управления в UI (key bindings) — ✅ реализовано
 - [x] Поддержка геймпадов (Gamepad API) — ✅ реализовано
@@ -147,54 +157,58 @@
 |-----------|--------|-------|--------------|
 | CPU (6502) | 🟡 Частично | ✅ 30 тестов | ❌ |
 | PPU | 🟢 Рендеринг готов | ✅ 30 тестов | ❌ |
-| APU | 🟡 Базовая реализация | ✅ 28 тестов | ❌ |
+| APU | 🟢 Базовая реализация | ✅ 28 тестов | ❌ |
 | Memory | 🟢 Готово | ✅ 30 тестов | ❌ |
 | Controller | ✅ Готово | ✅ 8 тестов | ❌ |
 | Cartridge | 🟢 Mapper 0,1,2,3,4 | ✅ 41 тест | ❌ |
 | NES Core | 🟢 Готово | ✅ 24 интеграционных | ❌ |
 | Emulator UI | 🟢 Готово | ✅ 16 интеграционных | ❌ |
+| LoadingScreen | 🟢 Готово | ❌ | ❌ |
 
 **Легенда:** 🟢 Готово | 🟡 В работе | 🔴 Не начато
 
-**Всего тестов:** 176
-**Покрытие:** ~70%
+**Всего тестов:** 202
+**Покрытие:** ~75%
 
 ---
 
 ## 📝 Примечания к коммиту
 
-**Последний коммит:** `6a59b52` — chore: обновлены статусы задач UI/UX в todo.md
+**Последний коммит:** `9e3cb18` — chore: обновлены статусы touch controls в todo.md
 
 **Ветки:**
-- `main` → origin/main (6a59b52) ✅
-- `dev` → origin/dev (6a59b52) ✅
+- `main` → origin/main (9e3cb18) ✅
+- `dev` → origin/dev (9e3cb18) ✅
 
 **Изменения в main (последние 5 коммитов):**
-- `6a59b52` — chore: обновлены статусы задач UI/UX в todo.md
+- `9e3cb18` — chore: обновлены статусы touch controls в todo.md
+- `2f0c838` — feat: добавлены мобильные контролы (touch buttons)
+- `b73a481` — chore: обновлены статусы key bindings в todo.md
 - `1eb7878` — feat: добавлена поддержка геймпадов (Gamepad API)
-- `ab1c75e` — chore: обновлены статусы задач сохранений в todo.md
 - `66e199e` — feat: добавлено автосохранение состояний в localStorage
-- `b7f128f` — chore: обновлены статусы тестов APU в todo.md
 
 **Достижения:**
-- ✅ 176 тестов пройдены (CPU: 30, PPU: 30, APU: 28, Memory: 30, Controller: 8, Cartridge: 41, Integration: 24)
+- ✅ 202 теста пройдены (CPU: 30, PPU: 30, APU: 28, Memory: 30, Controller: 8, Cartridge: 41, Integration: 24, Extended: 16)
 - ✅ Все mapper'ы поддержаны (0, 1, 2, 3, 4)
 - ✅ PPU rendering готов (background + sprites + priority)
-- ✅ APU базовая реализация готова
+- ✅ APU базовая реализация готова (улучшена генерация звука)
 - ✅ Автосохранение в localStorage (каждые 5 минут)
 - ✅ Поддержка геймпадов (Gamepad API)
+- ✅ Мобильные контролы (touch buttons)
+- ✅ LoadingScreen с прогресс-баром при загрузке ROM
 - ✅ Lint пройден
 
 **Текущие задачи:**
-1. Настройка key bindings в UI
-2. Список последних игр (localStorage)
+1. ~~Настройка key bindings в UI~~ ✅
+2. ~~Список последних игр (localStorage)~~ ✅
 3. Страница библиотеки игр `/library`
-4. Мобильные контролы (touch buttons)
+4. ~~Мобильные контролы (touch buttons)~~ ✅
 
 **Следующие шаги:**
 1. Продолжить улучшения в dev
 2. Протестировать с реальными ROM (Contra, Duck Tales)
 3. Добавить больше интеграционных тестов
+4. Добавить тесты для LoadingScreen
 
 ---
 

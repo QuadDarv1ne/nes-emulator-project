@@ -44,6 +44,7 @@ export class APU {
   private noiseEnabled: boolean = false
   private noiseShiftRegister: number = 1
   private noiseTimer: number = 0
+  private noiseVolume: number = 15
   private noiseEnvelope: number = 0
   private noiseEnvelopeVolume: number = 15
 
@@ -269,30 +270,30 @@ export class APU {
     let tndOut = 0
 
     // Pulse waves
-    if (this.pulse1Enabled) {
+    if (this.pulse1Enabled && this.pulse1Period > 0) {
       const duty = APU.DUTY_TABLE[this.pulse1Duty][this.pulse1DutyCycle]
-      if (duty) {
-        pulseOut += this.pulse1EnvelopeVolume
+      if (duty && this.pulse1Timer >= this.pulse1Period) {
+        pulseOut += this.pulse1Volume
       }
     }
 
-    if (this.pulse2Enabled) {
+    if (this.pulse2Enabled && this.pulse2Period > 0) {
       const duty = APU.DUTY_TABLE[this.pulse2Duty][this.pulse2DutyCycle]
-      if (duty) {
-        pulseOut += this.pulse2EnvelopeVolume
+      if (duty && this.pulse2Timer >= this.pulse2Period) {
+        pulseOut += this.pulse2Volume
       }
     }
 
     // Triangle
-    if (this.triangleEnabled && this.triangleLinearCounter > 0) {
-      tndOut += APU.TRIANGLE_TABLE[this.triangleValue] * 3
+    if (this.triangleEnabled && this.trianglePeriod > 0 && this.triangleLinearCounter > 0) {
+      tndOut += APU.TRIANGLE_TABLE[this.triangleValue]
     }
 
     // Noise
     if (this.noiseEnabled) {
       const noiseBit = this.noiseShiftRegister & 1
-      if (noiseBit) {
-        tndOut += this.noiseEnvelopeVolume * 2
+      if (noiseBit && this.noiseTimer >= APU.NOISE_PERIODS[this.noisePeriod & 0x0F]) {
+        tndOut += this.noiseVolume * 2
       }
     }
 
