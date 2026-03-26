@@ -113,16 +113,24 @@ export class NES {
         const rom = this.cartridge.getROM()
         if (!rom) return 0
 
-        // PRG ROM mapping
-        if (addr >= 0x8000 && addr <= 0xBFFF) {
+        // PRG ROM mapping - support mapper 0 (NROM) and simple mappers
+        if (addr >= 0x8000 && addr <= 0xFFFF) {
+          const prgSize = rom.prgROM.length
+          // For 16KB PRG ROM, mirror to both banks
+          if (prgSize === 0x4000) {
+            return rom.prgROM[addr & 0x3FFF]
+          }
+          // For 32KB PRG ROM, use full address space
           return rom.prgROM[addr - 0x8000]
-        } else if (addr >= 0xC000 && addr <= 0xFFFF) {
-          return rom.prgROM[rom.prgROM.length - 0x4000 + (addr - 0xC000)]
         }
         return 0
       },
       (addr, value) => {
-        // Cartridge writes (for mappers)
+        // Cartridge writes (for mappers) - basic mapper 0 support
+        const rom = this.cartridge.getROM()
+        if (!rom || rom.mapperId !== 0) return
+        
+        // Mapper 0 (NROM) doesn't have bank switching
       }
     )
 
@@ -135,6 +143,10 @@ export class NES {
 
   loadROM(data: Uint8Array): ROM {
     const rom = this.cartridge.load(data)
+    
+    // Устанавливаем CHR ROM в PPU
+    this.ppu.setCHRROM(rom.chrROM)
+    
     this.cpu.reset()
     this.ppu.reset()
     this.apu.reset()
