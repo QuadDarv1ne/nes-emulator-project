@@ -57,8 +57,15 @@ export class Memory {
     this.onDMA = handler
   }
 
+  triggerDMA(page: number) {
+    if (this.onDMA) {
+      this.onDMA(page)
+    }
+  }
+
   read(addr: number): number {
     addr &= 0xFFFF
+    this.readCount++
 
     // Mirror RAM (0x0000-0x1FFF)
     if (addr < 0x2000) {
@@ -97,6 +104,7 @@ export class Memory {
   write(addr: number, value: number) {
     addr &= 0xFFFF
     value &= 0xFF
+    this.writeCount++
 
     // Mirror RAM
     if (addr < 0x2000) {
@@ -167,6 +175,8 @@ export class Memory {
       ram: new Uint8Array(this.ram),
       ppuRegisters: new Uint8Array(this.ppuRegisters),
       apuRegisters: new Uint8Array(this.apuRegisters),
+      readCount: this.readCount,
+      writeCount: this.writeCount,
     }
   }
 
@@ -174,5 +184,7 @@ export class Memory {
     this.ram.set(state.ram)
     this.ppuRegisters.set(state.ppuRegisters)
     this.apuRegisters.set(state.apuRegisters)
+    this.readCount = state.readCount
+    this.writeCount = state.writeCount
   }
 }
